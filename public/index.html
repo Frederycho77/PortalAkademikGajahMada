@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Akademik — SMA Gajah Mada Binjai</title>
+  <link rel="stylesheet" href="/css/login.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+    HALAMAN LOGIN
+    Menangani login untuk semua role: admin, guru, siswa, orang_tua.
+    Setelah login berhasil, redirect ke dashboard sesuai role.
+  ============================================================ -->
+
+  <div class="login-wrapper">
+
+    <!-- Sisi Kiri: Branding Sekolah -->
+    <div class="login-branding">
+      <div class="branding-content">
+        <div class="school-logo">GM</div>
+        <h1 class="school-name">SMA Gajah Mada</h1>
+        <p class="school-sub">Binjai — Sumatera Utara</p>
+        <div class="branding-divider"></div>
+        <p class="branding-tagline">
+          "Disiplin, Cerdas, dan Berkarakter"
+        </p>
+        <div class="branding-features">
+          <div class="feature-item">
+            <span class="feature-icon">📊</span>
+            <span>Pantau Nilai & Absensi</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">📢</span>
+            <span>Informasi Sekolah Terkini</span>
+          </div>
+          <div class="feature-item">
+            <span class="feature-icon">🏆</span>
+            <span>Daftar Ekstrakurikuler</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sisi Kanan: Form Login -->
+    <div class="login-form-wrapper">
+      <div class="login-card">
+
+        <div class="login-header">
+          <h2>Selamat Datang</h2>
+          <p>Silakan masuk ke akun Anda</p>
+        </div>
+
+        <!-- Alert Error / Sukses -->
+        <div class="alert alert-error" id="alertError" role="alert" aria-live="polite">
+          <span class="alert-icon">⚠️</span>
+          <span id="alertErrorMsg">Username atau password salah.</span>
+        </div>
+
+        <!-- Form Login -->
+        <form id="loginForm" novalidate>
+
+          <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                class="form-control"
+                placeholder="Masukkan username Anda"
+                autocomplete="username"
+                required
+              />
+            </div>
+            <span class="field-error" id="usernameError"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔒</span>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="form-control"
+                placeholder="Masukkan password Anda"
+                autocomplete="current-password"
+                required
+              />
+              <button type="button" class="toggle-password" id="togglePassword" aria-label="Tampilkan password">
+                <span id="toggleIcon">👁️</span>
+              </button>
+            </div>
+            <span class="field-error" id="passwordError"></span>
+          </div>
+
+          <div class="form-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="rememberMe" />
+              <span class="checkmark"></span>
+              Ingat saya
+            </label>
+          </div>
+
+          <button type="submit" class="btn-login" id="btnLogin">
+            <span id="btnText">Masuk</span>
+            <span id="btnSpinner" class="spinner" aria-hidden="true"></span>
+          </button>
+
+        </form>
+
+        <div class="login-footer">
+          <p>Lupa password? Hubungi <a href="mailto:admin@smagm.sch.id">Administrator</a></p>
+        </div>
+
+      </div>
+
+      <p class="copyright">
+        &copy; 2025 SMA Gajah Mada Binjai. Hak Cipta Dilindungi.
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    // ============================================================
+    // LOGIN.JS — Inline script untuk halaman login
+    // ============================================================
+
+    const API_BASE = '/api/v1';
+
+    // --- Elemen DOM ---
+    const loginForm    = document.getElementById('loginForm');
+    const btnLogin     = document.getElementById('btnLogin');
+    const btnText      = document.getElementById('btnText');
+    const btnSpinner   = document.getElementById('btnSpinner');
+    const alertError   = document.getElementById('alertError');
+    const alertErrorMsg= document.getElementById('alertErrorMsg');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput  = document.getElementById('password');
+
+    // --- Toggle password visibility ---
+    togglePassword.addEventListener('click', () => {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      document.getElementById('toggleIcon').textContent = isPassword ? '🙈' : '👁️';
+    });
+
+    // --- Tampilkan/sembunyikan pesan error ---
+    function showError(message) {
+      alertErrorMsg.textContent = message;
+      alertError.style.display = 'flex';
+      alertError.classList.add('shake');
+      setTimeout(() => alertError.classList.remove('shake'), 500);
+    }
+
+    function hideError() {
+      alertError.style.display = 'none';
+    }
+
+    // --- Set loading state pada tombol ---
+    function setLoading(isLoading) {
+      btnLogin.disabled = isLoading;
+      btnText.textContent = isLoading ? 'Memproses...' : 'Masuk';
+      btnSpinner.style.display = isLoading ? 'inline-block' : 'none';
+    }
+
+    // --- Validasi form sederhana ---
+    function validateForm(username, password) {
+      let valid = true;
+      document.getElementById('usernameError').textContent = '';
+      document.getElementById('passwordError').textContent = '';
+
+      if (!username.trim()) {
+        document.getElementById('usernameError').textContent = 'Username wajib diisi';
+        valid = false;
+      }
+      if (!password) {
+        document.getElementById('passwordError').textContent = 'Password wajib diisi';
+        valid = false;
+      }
+      return valid;
+    }
+
+    // --- Redirect berdasarkan role ---
+    function redirectByRole(role) {
+      const routes = {
+        siswa:      '/pages/dashboard-siswa.html',
+        guru:       '/pages/dashboard-guru.html',
+        admin:      '/pages/dashboard-admin.html',
+        orang_tua:  '/pages/dashboard-ortu.html',
+      };
+      window.location.href = routes[role] || '/pages/dashboard-siswa.html';
+    }
+
+    // --- Cek apakah sudah login (ada token valid di localStorage) ---
+    (function checkExistingSession() {
+      const token    = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+      if (token && userData) {
+        try {
+          const user = JSON.parse(userData);
+          redirectByRole(user.role);
+        } catch (e) {
+          localStorage.clear();
+        }
+      }
+    })();
+
+    // --- Handle submit form login ---
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const username = document.getElementById('username').value;
+      const password = passwordInput.value;
+
+      if (!validateForm(username, password)) return;
+
+      setLoading(true);
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          showError(result.message || 'Login gagal. Periksa username dan password.');
+          return;
+        }
+
+        // Simpan token & data user ke localStorage
+        localStorage.setItem('token', result.data.token);
+        localStorage.setItem('user', JSON.stringify(result.data.user));
+
+        // Simpan username jika "ingat saya" dicentang
+        if (document.getElementById('rememberMe').checked) {
+          localStorage.setItem('rememberedUsername', username);
+        }
+
+        // Redirect ke dashboard sesuai role
+        redirectByRole(result.data.user.role);
+
+      } catch (err) {
+        console.error('Login error:', err);
+        showError('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // --- Isi username yang diingat ---
+    const rememberedUsername = localStorage.getItem('rememberedUsername');
+    if (rememberedUsername) {
+      document.getElementById('username').value = rememberedUsername;
+      document.getElementById('rememberMe').checked = true;
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Orang Tua — Portal Akademik SMA Gajah Mada</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo" style="background:#0e9f6e;">GM</div>
+      <div class="brand-text"><h2>SMA Gajah Mada</h2><span>Portal Orang Tua</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Menu Utama</span>
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span> Dashboard</button>
+      <button class="nav-item" data-page="nilai" onclick="showPage('nilai')"><span class="nav-icon">📊</span> Nilai Anak</button>
+      <button class="nav-item" data-page="absensi" onclick="showPage('absensi')"><span class="nav-icon">📅</span> Absensi Anak</button>
+      <span class="nav-section-label">Informasi</span>
+      <button class="nav-item" data-page="pengumuman" onclick="showPage('pengumuman')"><span class="nav-icon">📢</span> Pengumuman</button>
+      <span class="nav-section-label">Akun</span>
+      <button class="nav-item" data-page="profil" onclick="showPage('profil')"><span class="nav-icon">👤</span> Profil Saya</button>
+    </nav>
+    <div class="sidebar-profile">
+      <div class="profile-avatar" id="sidebarAvatar" style="background:#0e9f6e;">O</div>
+      <div class="profile-info">
+        <div class="profile-name" id="sidebarName">Memuat...</div>
+        <div class="profile-role">Orang Tua</div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="Keluar">🚪</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar-toggle" id="topbarToggle">☰</button>
+      <span class="topbar-title" id="topbarTitle">Dashboard Orang Tua</span>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbarDate"></span>
+      </div>
+    </header>
+    <main class="page-content" id="pageContent"></main>
+  </div>
+</div>
+
+<!-- Modal Detail Pengumuman -->
+<div class="modal-overlay" id="modalPengumuman">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalPengumumanTitle"></h3>
+      <button class="modal-close" onclick="closeModal('modalPengumuman')">&times;</button>
+    </div>
+    <div class="modal-body" id="modalPengumumanBody"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+'use strict';
+const API_BASE = '/api/v1';
+let currentUser = null;
+let anakProfile = null; // profil siswa yang terhubung ke akun orang tua ini
+
+document.addEventListener('DOMContentLoaded', () => {
+  const token = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
+  if (!token || !userData) { window.location.href='/'; return; }
+  try {
+    currentUser = JSON.parse(userData);
+    if (currentUser.role !== 'orang_tua') { window.location.href='/'; return; }
+  } catch { localStorage.clear(); window.location.href='/'; return; }
+
+  document.getElementById('sidebarName').textContent = currentUser.nama_lengkap;
+  document.getElementById('sidebarAvatar').textContent = currentUser.nama_lengkap.charAt(0).toUpperCase();
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('topbarToggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  });
+  document.getElementById('sidebarOverlay').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  });
+
+  // Ambil profil anak dari token
+  anakProfile = currentUser.profile || null;
+  showPage('dashboard');
+});
+
+function authHeaders() {
+  return { 'Content-Type':'application/json', 'Authorization':`Bearer ${localStorage.getItem('token')}` };
+}
+function showToast(msg, type='info') {
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;
+  c.appendChild(t); setTimeout(()=>t.remove(),4000);
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function logout() { if(confirm('Yakin ingin keluar?')){ localStorage.clear(); window.location.href='/'; } }
+function fmt(n) { return (n===null||n===undefined) ? '-' : parseFloat(n).toFixed(2); }
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}) : '-'; }
+
+const PAGE_TITLES = {
+  dashboard:'Dashboard', nilai:'Nilai Anak', absensi:'Absensi Anak',
+  pengumuman:'Pengumuman Sekolah', profil:'Profil Saya'
+};
+
+function showPage(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page===page));
+  document.getElementById('topbarTitle').textContent = PAGE_TITLES[page]||page;
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+  document.getElementById('pageContent').innerHTML = `<div class="loading-overlay"><div class="spinner-large"></div><span>Memuat...</span></div>`;
+  const renders = { dashboard:renderDashboard, nilai:renderNilai, absensi:renderAbsensi, pengumuman:renderPengumuman, profil:renderProfil };
+  (renders[page]||(() => {}))();
+}
+
+// ── Cek apakah ada data anak terhubung ──
+function noAnakWarning() {
+  return `<div class="card" style="max-width:480px;margin:0 auto;">
+    <div class="card-body" style="text-align:center;padding:2rem;">
+      <div style="font-size:3rem;margin-bottom:1rem;">👶</div>
+      <h3 style="margin-bottom:.5rem;">Data Anak Belum Terhubung</h3>
+      <p style="color:var(--text-mid);font-size:.9rem;">
+        Akun Anda belum dihubungkan ke data siswa.<br>
+        Hubungi administrator sekolah untuk menghubungkan akun ini dengan data anak Anda.
+      </p>
+    </div>
+  </div>`;
+}
+
+// ── DASHBOARD ──
+async function renderDashboard() {
+  const pengumuman = await fetchPengumuman();
+
+  // Cari siswa_profile_id anak yang orang_tua_id-nya adalah user ini
+  const anakId = await fetchAnakId();
+
+  let nilaiCard = '', absensiCard = '';
+
+  if (anakId) {
+    const [nilai, absensi] = await Promise.all([fetchNilai(anakId), fetchAbsensi(anakId)]);
+    const rataRata = nilai?.rata_rata || '-';
+    const pctHadir = absensi?.persentase_hadir || '0%';
+    const totalAlpa = absensi?.ringkasan?.A || 0;
+    const namaAnak = await fetchNamaAnak(anakId);
+
+    nilaiCard = `
+      <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div class="stat-info"><div class="stat-value">${rataRata}</div><div class="stat-label">Rata-rata Nilai</div><div class="stat-sub">${namaAnak}</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info"><div class="stat-value">${pctHadir}</div><div class="stat-label">Kehadiran</div><div class="stat-sub">Bulan ini</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">⚠️</div>
+        <div class="stat-info"><div class="stat-value">${totalAlpa}</div><div class="stat-label">Alpa</div><div class="stat-sub">Tanpa keterangan</div></div>
+      </div>`;
+
+    // Simpan anakId ke sessionStorage untuk dipakai halaman lain
+    sessionStorage.setItem('anakId', anakId);
+  } else {
+    nilaiCard = `<div class="stat-card" style="grid-column:span 3;">
+      <div class="stat-icon yellow">⚠️</div>
+      <div class="stat-info"><div class="stat-value">-</div><div class="stat-label">Data anak belum terhubung</div><div class="stat-sub">Hubungi administrator</div></div>
+    </div>`;
+  }
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>👋 Selamat Datang, ${currentUser.nama_lengkap.split(' ')[0]}!</h1>
+      <p>${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+      ${nilaiCard}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
+      <!-- Menu navigasi cepat -->
+      <div class="card"><div class="card-body">
+        <div class="section-header"><span class="section-title">📌 Menu Cepat</span></div>
+        <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.75rem;">
+          <button class="btn btn-primary" style="text-align:left;" onclick="showPage('nilai')">📊 Lihat Nilai Anak</button>
+          <button class="btn btn-primary" style="text-align:left;background:var(--secondary);" onclick="showPage('absensi')">📅 Lihat Absensi Anak</button>
+          <button class="btn btn-primary" style="text-align:left;background:var(--warning);" onclick="showPage('pengumuman')">📢 Baca Pengumuman</button>
+        </div>
+      </div></div>
+
+      <!-- Pengumuman terbaru -->
+      <div class="card"><div class="card-body">
+        <div class="section-header">
+          <span class="section-title">📢 Pengumuman Terbaru</span>
+          <button class="btn-link" onclick="showPage('pengumuman')">Lihat Semua →</button>
+        </div>
+        <div class="announcement-list" style="margin-top:.5rem;">
+          ${pengumuman.slice(0,3).map(p=>`
+            <button class="announcement-item ${p.is_pinned?'pinned':''}"
+                    onclick="showDetailPengumuman(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+              <div class="ann-icon">${p.is_pinned?'📌':'📢'}</div>
+              <div class="ann-content">
+                <div class="ann-title">${p.judul}</div>
+                <div class="ann-meta">${fmtDate(p.tanggal_tayang)}</div>
+              </div>
+            </button>`).join('') || '<p style="color:var(--text-light);font-size:.85rem;">Tidak ada pengumuman</p>'}
+        </div>
+      </div></div>
+    </div>`;
+}
+
+// ── NILAI ANAK ──
+async function renderNilai() {
+  const anakId = sessionStorage.getItem('anakId') || await fetchAnakId();
+  if (!anakId) { document.getElementById('pageContent').innerHTML = `<div class="page-header"><h1>📊 Nilai Anak</h1></div>${noAnakWarning()}`; return; }
+
+  const data = await fetchNilai(anakId);
+  const namaAnak = await fetchNamaAnak(anakId);
+  const nilai = data?.nilai || [];
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📊 Nilai Anak</h1>
+      <p>Siswa: <strong>${namaAnak}</strong> &nbsp;|&nbsp; Rata-rata: <strong>${data?.rata_rata || '-'}</strong></p>
+    </div>
+
+    <!-- Ringkasan visual -->
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem;">
+      <div class="stat-card">
+        <div class="stat-icon blue">📚</div>
+        <div class="stat-info">
+          <div class="stat-value">${nilai.length}</div>
+          <div class="stat-label">Mata Pelajaran</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+          <div class="stat-value">${nilai.filter(n=>n.keterangan==='Tuntas').length}</div>
+          <div class="stat-label">Tuntas</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">❌</div>
+        <div class="stat-info">
+          <div class="stat-value">${nilai.filter(n=>n.keterangan==='Belum Tuntas').length}</div>
+          <div class="stat-label">Belum Tuntas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr><th>No</th><th>Mata Pelajaran</th><th>KKM</th><th>Harian</th><th>UTS</th><th>UAS</th><th>Nilai Akhir</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${nilai.length===0
+              ? `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light);">Belum ada data nilai</td></tr>`
+              : nilai.map((n,i)=>`
+                <tr>
+                  <td>${i+1}</td>
+                  <td><strong>${n.nama_mapel}</strong></td>
+                  <td>${n.kkm}</td>
+                  <td>${fmt(n.nilai_harian)}</td>
+                  <td>${fmt(n.nilai_uts)}</td>
+                  <td>${fmt(n.nilai_uas)}</td>
+                  <td>
+                    <strong style="font-size:1.05rem;color:${parseFloat(n.nilai_akhir)>=n.kkm?'var(--secondary)':'var(--danger)'}">
+                      ${fmt(n.nilai_akhir)}
+                    </strong>
+                  </td>
+                  <td><span class="badge ${n.keterangan==='Tuntas'?'badge-success':'badge-danger'}">${n.keterangan||'-'}</span></td>
+                </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Catatan untuk orang tua -->
+    ${nilai.filter(n=>n.keterangan==='Belum Tuntas').length>0 ? `
+    <div style="margin-top:1rem;padding:1rem 1.25rem;background:var(--danger-light);border-left:4px solid var(--danger);border-radius:8px;font-size:.875rem;">
+      <strong>⚠️ Perhatian:</strong> Terdapat ${nilai.filter(n=>n.keterangan==='Belum Tuntas').length} mata pelajaran yang belum mencapai KKM.
+      Mohon berikan perhatian dan dukungan lebih kepada putra/putri Anda.
+    </div>` : `
+    <div style="margin-top:1rem;padding:1rem 1.25rem;background:var(--secondary-light);border-left:4px solid var(--secondary);border-radius:8px;font-size:.875rem;">
+      <strong>✅ Bagus!</strong> Semua mata pelajaran sudah mencapai KKM. Terus semangat!
+    </div>`}`;
+}
+
+// ── ABSENSI ANAK ──
+async function renderAbsensi() {
+  const anakId = sessionStorage.getItem('anakId') || await fetchAnakId();
+  if (!anakId) { document.getElementById('pageContent').innerHTML = `<div class="page-header"><h1>📅 Absensi Anak</h1></div>${noAnakWarning()}`; return; }
+
+  const data = await fetchAbsensi(anakId);
+  const namaAnak = await fetchNamaAnak(anakId);
+  const STATUS_LABEL = {H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa'};
+  const STATUS_BADGE = {H:'badge-success',I:'badge-info',S:'badge-warning',A:'badge-danger'};
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📅 Absensi Anak</h1>
+      <p>Siswa: <strong>${namaAnak}</strong></p>
+    </div>
+
+    <!-- Ringkasan Absensi -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-body">
+        <div class="absensi-summary">
+          <div class="absensi-item hadir"><div class="absensi-count">${data?.ringkasan?.H||0}</div><div class="absensi-label">Hadir</div></div>
+          <div class="absensi-item izin"> <div class="absensi-count">${data?.ringkasan?.I||0}</div><div class="absensi-label">Izin</div></div>
+          <div class="absensi-item sakit"><div class="absensi-count">${data?.ringkasan?.S||0}</div><div class="absensi-label">Sakit</div></div>
+          <div class="absensi-item alpa"> <div class="absensi-count">${data?.ringkasan?.A||0}</div><div class="absensi-label">Alpa</div></div>
+        </div>
+        <div class="progress-wrapper" style="margin-top:.75rem;">
+          <div class="progress-label">
+            <span>Persentase Kehadiran Bulan Ini</span>
+            <strong>${data?.persentase_hadir||'0%'}</strong>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${parseFloat(data?.persentase_hadir)||0}%"></div>
+          </div>
+        </div>
+
+        <!-- Peringatan jika alpa tinggi -->
+        ${(data?.ringkasan?.A||0) >= 3 ? `
+        <div style="margin-top:1rem;padding:.85rem 1rem;background:var(--danger-light);border-left:4px solid var(--danger);border-radius:8px;font-size:.875rem;">
+          ⚠️ Putra/putri Anda sudah <strong>${data.ringkasan.A} kali alpa</strong> bulan ini. 
+          Mohon berikan perhatian lebih agar kehadiran tetap terjaga.
+        </div>` : ''}
+      </div>
+    </div>
+
+    <!-- Riwayat Absensi -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead><tr><th>Tanggal</th><th>Mata Pelajaran</th><th>Status</th><th>Keterangan</th><th>Guru</th></tr></thead>
+          <tbody>
+            ${!data?.absensi?.length
+              ? `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light);">Belum ada data absensi bulan ini</td></tr>`
+              : data.absensi.map(a=>`
+                <tr>
+                  <td>${fmtDate(a.tanggal)}</td>
+                  <td>${a.nama_mapel||'Umum'}</td>
+                  <td><span class="badge ${STATUS_BADGE[a.status]}">${STATUS_LABEL[a.status]}</span></td>
+                  <td style="font-size:.82rem;color:var(--text-mid);">${a.keterangan||'-'}</td>
+                  <td style="font-size:.8rem;">${a.nama_guru}</td>
+                </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── PENGUMUMAN ──
+async function renderPengumuman() {
+  const list = await fetchPengumuman();
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📢 Pengumuman Sekolah</h1>
+      <p>Informasi terbaru dari SMA Gajah Mada Binjai</p>
+    </div>
+    <div class="announcement-list">
+      ${list.length===0
+        ? `<div class="empty-state card"><div class="card-body"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada pengumuman</div></div></div>`
+        : list.map(p=>`
+          <button class="announcement-item ${p.is_pinned?'pinned':''}"
+                  onclick="showDetailPengumuman(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+            <div class="ann-icon ${p.is_pinned?'pinned-icon':''}">${p.is_pinned?'📌':'📢'}</div>
+            <div class="ann-content">
+              <div class="ann-title">${p.judul}</div>
+              <div class="ann-snippet">${p.isi}</div>
+              <div class="ann-meta">
+                ${fmtDate(p.tanggal_tayang)} · ${p.nama_penulis}
+                ${p.is_pinned?'<span class="badge badge-warning" style="margin-left:.5rem;">📌 Disematkan</span>':''}
+              </div>
+            </div>
+          </button>`).join('')}
+    </div>`;
+}
+
+function showDetailPengumuman(p) {
+  document.getElementById('modalPengumumanTitle').textContent = p.judul;
+  document.getElementById('modalPengumumanBody').innerHTML = `
+    <p style="font-size:.8rem;color:var(--text-light);margin-bottom:1rem;">
+      ${fmtDate(p.tanggal_tayang)} · ${p.nama_penulis}
+    </p>
+    <div style="line-height:1.8;">${p.isi}</div>
+    ${p.lampiran?`<p style="margin-top:1rem;"><a href="/uploads/lampiran/${p.lampiran}" target="_blank">📎 Unduh Lampiran</a></p>`:''}`;
+  openModal('modalPengumuman');
+}
+
+// ── PROFIL ──
+function renderProfil() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header"><h1>👤 Profil Saya</h1></div>
+    <div class="card" style="max-width:460px;">
+      <div class="card-body" style="text-align:center;">
+        <div style="width:80px;height:80px;border-radius:50%;background:#0e9f6e;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;font-weight:700;margin:0 auto 1rem;">
+          ${currentUser?.nama_lengkap?.charAt(0).toUpperCase()}
+        </div>
+        <h2 style="font-size:1.2rem;font-weight:700;">${currentUser?.nama_lengkap}</h2>
+        <p style="color:var(--text-mid);font-size:.85rem;margin-bottom:1.5rem;">Orang Tua / Wali Murid</p>
+        <table style="width:100%;text-align:left;border-collapse:collapse;font-size:.875rem;">
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);width:120px;">Username</td><td style="padding:.6rem 0;font-weight:600;">@${currentUser?.username}</td></tr>
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);">Email</td><td>${currentUser?.email||'-'}</td></tr>
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);">No. HP</td><td>${currentUser?.no_hp||'-'}</td></tr>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── FETCH HELPERS ──
+async function fetchAnakId() {
+  // Cari siswa_profile yang orang_tua_id-nya = user ini
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, { headers:authHeaders() });
+    // Ambil dari profile yang disimpan saat login — tidak ada endpoint khusus
+    // Fallback: gunakan data dari sessionStorage jika ada
+    const saved = sessionStorage.getItem('anakId');
+    if (saved) return saved;
+    // Jika tidak ada, return null → tampilkan pesan hubungi admin
+    return null;
+  } catch { return null; }
+}
+
+async function fetchNamaAnak(anakId) {
+  try {
+    const res = await fetch(`${API_BASE}/nilai/siswa/${anakId}?semester=1&tahun_ajaran=2025/2026`, { headers:authHeaders() });
+    // Nama anak dari user yang login (sudah ada di token)
+    return currentUser.nama_lengkap + ' (Anak)';
+  } catch { return 'Putra/Putri Anda'; }
+}
+
+async function fetchNilai(anakId) {
+  try {
+    const res = await fetch(`${API_BASE}/nilai/siswa/${anakId}?semester=1&tahun_ajaran=2025/2026`, { headers:authHeaders() });
+    if (!res.ok) return null;
+    return (await res.json()).data;
+  } catch { return null; }
+}
+
+async function fetchAbsensi(anakId) {
+  try {
+    const now = new Date();
+    const res = await fetch(`${API_BASE}/absensi/siswa/${anakId}?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`, { headers:authHeaders() });
+    if (!res.ok) return null;
+    return (await res.json()).data;
+  } catch { return null; }
+}
+
+async function fetchPengumuman() {
+  try {
+    const res = await fetch(`${API_BASE}/pengumuman?limit=30`, { headers:authHeaders() });
+    return (await res.json()).data?.pengumuman || [];
+  } catch { return []; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,376 @@
+/* ============================================================
+   login.css — Modern Login v2
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:        #4f46e5;
+  --primary-dark:   #3730a3;
+  --primary-light:  #eef2ff;
+  --secondary:      #059669;
+  --danger:         #dc2626;
+  --danger-light:   #fee2e2;
+  --text-dark:      #0f172a;
+  --text-mid:       #475569;
+  --text-light:     #94a3b8;
+  --border:         #e2e8f0;
+  --bg:             #f8fafc;
+  --white:          #ffffff;
+  --radius:         14px;
+  --t:              .2s cubic-bezier(.4,0,.2,1);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.login-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sisi Kiri: Branding ── */
+.login-branding {
+  flex: 1.1;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 70%, #0891b2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dekorasi blur balls */
+.login-branding::before {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(129,140,248,.3) 0%, transparent 70%);
+  top: -150px; right: -100px;
+  border-radius: 50%;
+}
+
+.login-branding::after {
+  content: '';
+  position: absolute;
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(6,182,212,.25) 0%, transparent 70%);
+  bottom: -80px; left: -60px;
+  border-radius: 50%;
+}
+
+/* Grid dots decoration */
+.branding-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: var(--white);
+  max-width: 380px;
+}
+
+.school-logo {
+  width: 88px; height: 88px;
+  background: rgba(255,255,255,.12);
+  border: 2px solid rgba(255,255,255,.2);
+  border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 2rem;
+  font-weight: 900;
+  color: white;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.15);
+  letter-spacing: -1px;
+}
+
+.school-name {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -.8px;
+  margin-bottom: .3rem;
+  text-shadow: 0 2px 12px rgba(0,0,0,.2);
+}
+
+.school-sub {
+  font-size: .9rem;
+  opacity: .75;
+  margin-bottom: 1.75rem;
+  font-weight: 400;
+}
+
+.branding-divider {
+  width: 48px; height: 3px;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.6), rgba(255,255,255,0));
+  border-radius: 2px;
+  margin: 0 auto 1.5rem;
+}
+
+.branding-tagline {
+  font-style: italic;
+  font-size: 1rem;
+  opacity: .85;
+  margin-bottom: 2rem;
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.branding-features { text-align: left; display: flex; flex-direction: column; gap: .5rem; }
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .7rem 1rem;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  font-size: .85rem;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+  transition: background var(--t);
+}
+.feature-item:hover { background: rgba(255,255,255,.12); }
+.feature-icon { font-size: 1.15rem; }
+
+/* ── Sisi Kanan: Form ── */
+.login-form-wrapper {
+  flex: .9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 2rem;
+  background: var(--bg);
+}
+
+.login-card {
+  background: var(--white);
+  border-radius: 20px;
+  box-shadow: 0 4px 6px rgba(0,0,0,.05), 0 20px 40px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
+  padding: 2.25rem 2rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.login-header h2 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: .35rem;
+  letter-spacing: -.6px;
+}
+
+.login-header p {
+  color: var(--text-light);
+  font-size: .875rem;
+}
+
+/* Alert */
+.alert {
+  display: none;
+  align-items: center;
+  gap: .6rem;
+  padding: .8rem .95rem;
+  border-radius: 10px;
+  font-size: .825rem;
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+}
+
+.alert-error {
+  background: var(--danger-light);
+  color: #991b1b;
+  border: 1.5px solid #fecaca;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60%  { transform: translateX(-5px); }
+  40%,80%  { transform: translateX(5px); }
+}
+.shake { animation: shake .35s ease; }
+
+/* Form Groups */
+.form-group { margin-bottom: 1.1rem; }
+
+.form-label {
+  display: block;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--text-mid);
+  margin-bottom: .4rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.input-wrapper { position: relative; display: flex; align-items: center; }
+.input-icon { position: absolute; left: .875rem; font-size: .95rem; pointer-events: none; }
+
+.form-control {
+  width: 100%;
+  padding: .7rem .9rem .7rem 2.6rem;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: .9rem;
+  color: var(--text-dark);
+  background: var(--bg);
+  transition: border-color var(--t), box-shadow var(--t), background var(--t);
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+
+.form-control:hover { border-color: #cbd5e1; }
+
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+  background: #fafbff;
+}
+
+.form-control::placeholder { color: var(--text-light); }
+
+.toggle-password {
+  position: absolute;
+  right: .75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: .2rem;
+  opacity: .45;
+  transition: opacity var(--t);
+}
+.toggle-password:hover { opacity: 1; }
+
+.field-error { display: block; font-size: .72rem; color: var(--danger); margin-top: .3rem; font-weight: 500; }
+
+/* Options */
+.form-options {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.4rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .82rem;
+  color: var(--text-mid);
+  cursor: pointer;
+  font-weight: 500;
+}
+.checkbox-label input { accent-color: var(--primary); width: 15px; height: 15px; }
+
+/* Login Button */
+.btn-login {
+  width: 100%;
+  padding: .8rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: var(--white);
+  border: none;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  transition: all var(--t);
+  box-shadow: 0 4px 14px rgba(79,70,229,.35);
+  letter-spacing: .2px;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-login:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79,70,229,.45);
+}
+
+.btn-login:active:not(:disabled) { transform: translateY(0); }
+.btn-login:disabled { opacity: .65; cursor: not-allowed; }
+
+/* Spinner */
+.spinner {
+  display: none;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: var(--white);
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Footer */
+.login-footer {
+  text-align: center;
+  margin-top: 1.4rem;
+  font-size: .8rem;
+  color: var(--text-light);
+}
+
+.login-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.login-footer a:hover { text-decoration: underline; }
+
+.copyright {
+  margin-top: 1.75rem;
+  font-size: .72rem;
+  color: var(--text-light);
+  text-align: center;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .login-branding { flex: 0 0 45%; }
+  .login-form-wrapper { flex: 0 0 55%; }
+}
+
+@media (max-width: 640px) {
+  .login-wrapper { flex-direction: column; }
+
+  .login-branding {
+    flex: none;
+    padding: 2rem 1.5rem;
+    min-height: auto;
+  }
+
+  .school-name { font-size: 1.5rem; }
+  .branding-features { display: none; }
+  .branding-tagline { font-size: .9rem; }
+
+  .login-form-wrapper {
+    flex: none;
+    padding: 1.75rem 1.25rem;
+    justify-content: flex-start;
+  }
+
+  .login-card {
+    padding: 1.5rem 1.25rem;
+    box-shadow: none;
+    border-radius: var(--radius);
+    background: transparent;
+  }
+}

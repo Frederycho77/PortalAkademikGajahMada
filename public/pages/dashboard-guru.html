@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Guru — Portal Akademik SMA Gajah Mada</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">GM</div>
+      <div class="brand-text"><h2>SMA Gajah Mada</h2><span>Portal Akademik</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Menu Utama</span>
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span> Dashboard</button>
+      <button class="nav-item" data-page="nilai" onclick="showPage('nilai')"><span class="nav-icon">📊</span> Input Nilai</button>
+      <button class="nav-item" data-page="absensi" onclick="showPage('absensi')"><span class="nav-icon">📅</span> Input Absensi</button>
+      <span class="nav-section-label">Informasi</span>
+      <button class="nav-item" data-page="pengumuman" onclick="showPage('pengumuman')"><span class="nav-icon">📢</span> Pengumuman</button>
+      <button class="nav-item" data-page="buat-pengumuman" onclick="showPage('buat-pengumuman')"><span class="nav-icon">✏️</span> Buat Pengumuman</button>
+      <span class="nav-section-label">Akun</span>
+      <button class="nav-item" data-page="profil" onclick="showPage('profil')"><span class="nav-icon">👤</span> Profil Saya</button>
+    </nav>
+    <div class="sidebar-profile">
+      <div class="profile-avatar" id="sidebarAvatar">G</div>
+      <div class="profile-info">
+        <div class="profile-name" id="sidebarName">Memuat...</div>
+        <div class="profile-role">Guru</div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="Keluar">🚪</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar-toggle" id="topbarToggle">☰</button>
+      <span class="topbar-title" id="topbarTitle">Dashboard Guru</span>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbarDate"></span>
+      </div>
+    </header>
+    <main class="page-content" id="pageContent"></main>
+  </div>
+</div>
+
+<!-- Modal Input Nilai -->
+<div class="modal-overlay" id="modalNilai">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Input / Edit Nilai Siswa</h3>
+      <button class="modal-close" onclick="closeModal('modalNilai')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="formNilai">
+        <div style="display:grid; gap:.9rem;">
+          <div class="form-group">
+            <label class="form-label">Siswa ID (siswa_profile.id)</label>
+            <input type="number" id="n_siswa_id" class="form-control" placeholder="Contoh: 1" required/>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+            <div class="form-group">
+              <label class="form-label">Mata Pelajaran ID</label>
+              <input type="number" id="n_mapel_id" class="form-control" placeholder="ID mapel" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kelas ID</label>
+              <input type="number" id="n_kelas_id" class="form-control" placeholder="ID kelas" required/>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+            <div class="form-group">
+              <label class="form-label">Semester</label>
+              <select id="n_semester" class="form-control">
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tahun Ajaran</label>
+              <input type="text" id="n_tahun_ajaran" class="form-control" value="2025/2026" required/>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
+            <div class="form-group">
+              <label class="form-label">Nilai Harian</label>
+              <input type="number" id="n_harian" class="form-control" min="0" max="100" step="0.01" placeholder="0–100"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nilai UTS</label>
+              <input type="number" id="n_uts" class="form-control" min="0" max="100" step="0.01" placeholder="0–100"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nilai UAS</label>
+              <input type="number" id="n_uas" class="form-control" min="0" max="100" step="0.01" placeholder="0–100"/>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalNilai')">Batal</button>
+      <button class="btn btn-primary" onclick="submitNilai()">Simpan Nilai</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Buat Pengumuman -->
+<div class="modal-overlay" id="modalPengumuman">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalPengumumanTitle">Buat Pengumuman</h3>
+      <button class="modal-close" onclick="closeModal('modalPengumuman')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="formPengumuman">
+        <div style="display:grid; gap:.9rem;">
+          <div class="form-group">
+            <label class="form-label">Judul Pengumuman</label>
+            <input type="text" id="p_judul" class="form-control" placeholder="Judul pengumuman..." required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Isi Pengumuman</label>
+            <textarea id="p_isi" class="form-control" rows="5" placeholder="Tulis isi pengumuman di sini..." required style="resize:vertical;"></textarea>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+            <div class="form-group">
+              <label class="form-label">Tanggal Tayang</label>
+              <input type="date" id="p_tayang" class="form-control"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Expired (opsional)</label>
+              <input type="date" id="p_expired" class="form-control"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Penerima</label>
+            <select id="p_target" class="form-control">
+              <option value="">Semua Pengguna</option>
+              <option value="siswa">Siswa</option>
+              <option value="orang_tua">Orang Tua</option>
+              <option value="guru">Guru</option>
+            </select>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="p_pinned"/>
+            <span class="checkmark"></span>
+            Sematkan di atas (Pinned)
+          </label>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalPengumuman')">Batal</button>
+      <button class="btn btn-primary" onclick="submitPengumuman()">Publikasikan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+'use strict';
+const API_BASE = '/api/v1';
+let currentUser = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const token = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
+  if (!token || !userData) { window.location.href = '/'; return; }
+  try {
+    currentUser = JSON.parse(userData);
+    if (currentUser.role !== 'guru') { window.location.href = '/'; return; }
+  } catch { localStorage.clear(); window.location.href = '/'; return; }
+
+  document.getElementById('sidebarName').textContent = currentUser.nama_lengkap;
+  document.getElementById('sidebarAvatar').textContent = currentUser.nama_lengkap.charAt(0).toUpperCase();
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('topbarToggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  });
+  document.getElementById('sidebarOverlay').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  });
+  showPage('dashboard');
+});
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` };
+}
+function showToast(msg, type='info') {
+  const icons = { success:'✅', error:'❌', info:'ℹ️' };
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  c.appendChild(t); setTimeout(() => t.remove(), 4000);
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function logout() { if(confirm('Yakin ingin keluar?')) { localStorage.clear(); window.location.href='/'; } }
+
+const PAGE_TITLES = {
+  dashboard:'Dashboard Guru', nilai:'Input Nilai', absensi:'Input Absensi',
+  pengumuman:'Pengumuman', 'buat-pengumuman':'Buat Pengumuman', profil:'Profil Saya'
+};
+
+function showPage(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+  document.getElementById('topbarTitle').textContent = PAGE_TITLES[page] || page;
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+  const renders = {
+    dashboard: renderDashboard, nilai: renderNilai,
+    absensi: renderAbsensi, pengumuman: renderPengumuman,
+    'buat-pengumuman': renderBuatPengumuman, profil: renderProfil
+  };
+  document.getElementById('pageContent').innerHTML = `<div class="loading-overlay"><div class="spinner-large"></div><span>Memuat...</span></div>`;
+  (renders[page] || (() => {}))();
+}
+
+// ── DASHBOARD ──
+async function renderDashboard() {
+  const pengumuman = await fetchPengumuman();
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>👋 Selamat Datang, ${currentUser.nama_lengkap.split(' ')[0]}!</h1>
+      <p>${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div class="stat-info"><div class="stat-value">—</div><div class="stat-label">Input Nilai</div><div class="stat-sub">Kelola nilai siswa</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">📅</div>
+        <div class="stat-info"><div class="stat-value">—</div><div class="stat-label">Absensi</div><div class="stat-sub">Rekam kehadiran</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow">📢</div>
+        <div class="stat-info"><div class="stat-value">${pengumuman.length}</div><div class="stat-label">Pengumuman</div><div class="stat-sub">Aktif saat ini</div></div>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+      <div class="card"><div class="card-body">
+        <div class="section-header"><span class="section-title">⚡ Aksi Cepat</span></div>
+        <div style="display:flex; flex-direction:column; gap:.6rem; margin-top:.5rem;">
+          <button class="btn btn-primary" style="text-align:left;" onclick="openModal('modalNilai')">📊 Input Nilai Siswa</button>
+          <button class="btn btn-primary" style="text-align:left; background:var(--secondary);" onclick="showPage('absensi')">📅 Input Absensi</button>
+          <button class="btn btn-primary" style="text-align:left; background:var(--warning);" onclick="openModal('modalPengumuman')">📢 Buat Pengumuman</button>
+        </div>
+      </div></div>
+      <div class="card"><div class="card-body">
+        <div class="section-header"><span class="section-title">📢 Pengumuman Terbaru</span><button class="btn-link" onclick="showPage('pengumuman')">Lihat Semua →</button></div>
+        <div class="announcement-list" style="margin-top:.5rem;">
+          ${pengumuman.slice(0,3).map(p=>`
+            <div class="announcement-item" style="cursor:default;">
+              <div class="ann-icon">${p.is_pinned?'📌':'📢'}</div>
+              <div class="ann-content">
+                <div class="ann-title">${p.judul}</div>
+                <div class="ann-meta">${new Date(p.tanggal_tayang).toLocaleDateString('id-ID')}</div>
+              </div>
+            </div>`).join('') || '<p style="color:var(--text-light);font-size:.85rem;">Tidak ada pengumuman</p>'}
+        </div>
+      </div></div>
+    </div>`;
+}
+
+// ── INPUT NILAI ──
+function renderNilai() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📊 Input Nilai Siswa</h1>
+      <p>Masukkan atau perbarui nilai akademik siswa</p>
+    </div>
+    <div class="card"><div class="card-body">
+      <p style="color:var(--text-mid); font-size:.9rem; margin-bottom:1.25rem;">
+        Gunakan form di bawah untuk menginput nilai. Nilai akhir dihitung otomatis oleh sistem:<br>
+        <strong>Nilai Akhir = (Harian × 30%) + (UTS × 30%) + (UAS × 40%)</strong>
+      </p>
+      <button class="btn btn-primary" onclick="openModal('modalNilai')">+ Input Nilai Baru</button>
+      <div style="margin-top:1.5rem;">
+        <div class="section-header" style="margin-bottom:.75rem;">
+          <span class="section-title">🔍 Lihat Nilai Siswa</span>
+        </div>
+        <div style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:flex-end;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Siswa ID</label>
+            <input type="number" id="cariSiswaId" class="form-control" placeholder="ID siswa_profile" style="width:160px;"/>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Semester</label>
+            <select id="cariSemester" class="form-control" style="width:130px;">
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="cariNilai()">Tampilkan</button>
+        </div>
+        <div id="hasilNilai" style="margin-top:1rem;"></div>
+      </div>
+    </div></div>`;
+}
+
+async function cariNilai() {
+  const id = document.getElementById('cariSiswaId').value;
+  const sem = document.getElementById('cariSemester').value;
+  if (!id) { showToast('Masukkan Siswa ID terlebih dahulu','error'); return; }
+  const res = await fetch(`${API_BASE}/nilai/siswa/${id}?semester=${sem}&tahun_ajaran=2025/2026`, { headers: authHeaders() });
+  const json = await res.json();
+  const container = document.getElementById('hasilNilai');
+  if (!res.ok || !json.data?.nilai?.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada data nilai</div></div>`;
+    return;
+  }
+  const rows = json.data.nilai.map((n,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${n.nama_mapel}</td>
+      <td>${n.nilai_harian??'-'}</td>
+      <td>${n.nilai_uts??'-'}</td>
+      <td>${n.nilai_uas??'-'}</td>
+      <td><strong>${parseFloat(n.nilai_akhir).toFixed(2)}</strong></td>
+      <td><span class="badge ${n.keterangan==='Tuntas'?'badge-success':'badge-danger'}">${n.keterangan}</span></td>
+    </tr>`).join('');
+  container.innerHTML = `<div class="table-responsive"><table class="data-table">
+    <thead><tr><th>No</th><th>Mata Pelajaran</th><th>Harian</th><th>UTS</th><th>UAS</th><th>Nilai Akhir</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+async function submitNilai() {
+  const body = {
+    siswa_id: parseInt(document.getElementById('n_siswa_id').value),
+    mapel_id: parseInt(document.getElementById('n_mapel_id').value),
+    kelas_id: parseInt(document.getElementById('n_kelas_id').value),
+    semester: parseInt(document.getElementById('n_semester').value),
+    tahun_ajaran: document.getElementById('n_tahun_ajaran').value,
+    nilai_harian: parseFloat(document.getElementById('n_harian').value) || null,
+    nilai_uts: parseFloat(document.getElementById('n_uts').value) || null,
+    nilai_uas: parseFloat(document.getElementById('n_uas').value) || null,
+  };
+  const res = await fetch(`${API_BASE}/nilai`, { method:'POST', headers: authHeaders(), body: JSON.stringify(body) });
+  const json = await res.json();
+  closeModal('modalNilai');
+  if (res.ok && json.success) { showToast('Nilai berhasil disimpan!', 'success'); document.getElementById('formNilai').reset(); }
+  else showToast(json.message || 'Gagal menyimpan nilai', 'error');
+}
+
+// ── INPUT ABSENSI ──
+function renderAbsensi() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📅 Input Absensi</h1>
+      <p>Rekam kehadiran siswa per kelas</p>
+    </div>
+    <div class="card"><div class="card-body">
+      <div style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1.25rem;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Kelas ID</label>
+          <input type="number" id="abs_kelas_id" class="form-control" placeholder="ID kelas" style="width:120px;"/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Mata Pelajaran ID (opsional)</label>
+          <input type="number" id="abs_mapel_id" class="form-control" placeholder="ID mapel" style="width:160px;"/>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Tanggal</label>
+          <input type="date" id="abs_tanggal" class="form-control" value="${today}" style="width:160px;"/>
+        </div>
+        <button class="btn btn-primary" onclick="loadAbsensiForm()">Muat Daftar Siswa</button>
+      </div>
+      <div id="absensiForm"></div>
+    </div></div>`;
+}
+
+async function loadAbsensiForm() {
+  const kelasId = document.getElementById('abs_kelas_id').value;
+  if (!kelasId) { showToast('Masukkan Kelas ID','error'); return; }
+  const res = await fetch(`${API_BASE}/absensi/rekap-kelas/${kelasId}`, { headers: authHeaders() });
+  const json = await res.json();
+  if (!res.ok || !json.data?.length) {
+    document.getElementById('absensiForm').innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada siswa di kelas ini</div></div>`;
+    return;
+  }
+  const rows = json.data.map((s,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${s.nama_lengkap}</strong></td>
+      <td>${s.nis}</td>
+      <td>
+        <select class="form-control" id="status_${s.siswa_profile_id}" style="width:110px;">
+          <option value="H">✅ Hadir</option>
+          <option value="I">📋 Izin</option>
+          <option value="S">🤒 Sakit</option>
+          <option value="A">❌ Alpa</option>
+        </select>
+      </td>
+      <td><input type="text" class="form-control" id="ket_${s.siswa_profile_id}" placeholder="Keterangan..." style="width:180px;"/></td>
+    </tr>`).join('');
+  document.getElementById('absensiForm').innerHTML = `
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead><tr><th>No</th><th>Nama Siswa</th><th>NIS</th><th>Status</th><th>Keterangan</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem; display:flex; gap:.75rem;">
+      <button class="btn btn-primary" onclick="submitAbsensi(${JSON.stringify(json.data.map(s=>s.siswa_profile_id))})">💾 Simpan Absensi</button>
+    </div>`;
+}
+
+async function submitAbsensi(siswaIds) {
+  const kelasId = document.getElementById('abs_kelas_id').value;
+  const mapelId = document.getElementById('abs_mapel_id').value;
+  const tanggal = document.getElementById('abs_tanggal').value;
+  const data = siswaIds.map(id => ({
+    siswa_id: id,
+    status: document.getElementById(`status_${id}`).value,
+    keterangan: document.getElementById(`ket_${id}`).value || null,
+  }));
+  const body = { kelas_id: parseInt(kelasId), mapel_id: mapelId ? parseInt(mapelId) : null, tanggal, data };
+  const res = await fetch(`${API_BASE}/absensi/bulk`, { method:'POST', headers: authHeaders(), body: JSON.stringify(body) });
+  const json = await res.json();
+  if (res.ok && json.success) showToast(`Absensi ${json.data.total_diproses} siswa berhasil disimpan!`, 'success');
+  else showToast(json.message || 'Gagal menyimpan absensi', 'error');
+}
+
+// ── PENGUMUMAN ──
+async function renderPengumuman() {
+  const list = await fetchPengumuman();
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📢 Pengumuman Sekolah</h1>
+      <p>Daftar pengumuman yang aktif</p>
+    </div>
+    <div style="margin-bottom:1rem; text-align:right;">
+      <button class="btn btn-primary" onclick="openModal('modalPengumuman')">+ Buat Pengumuman Baru</button>
+    </div>
+    <div class="announcement-list">
+      ${list.length===0
+        ? `<div class="empty-state card"><div class="card-body"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada pengumuman</div></div></div>`
+        : list.map(p=>`
+          <div class="announcement-item ${p.is_pinned?'pinned':''}" style="cursor:default;">
+            <div class="ann-icon ${p.is_pinned?'pinned-icon':''}">${p.is_pinned?'📌':'📢'}</div>
+            <div class="ann-content">
+              <div class="ann-title">${p.judul}</div>
+              <div class="ann-snippet">${p.isi}</div>
+              <div class="ann-meta">${new Date(p.tanggal_tayang).toLocaleDateString('id-ID')} · ${p.nama_penulis}</div>
+            </div>
+            ${p.penulis_id===currentUser?.id||currentUser?.role==='admin'?`
+            <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;flex-shrink:0;"
+                    onclick="hapusPengumuman(${p.id})">🗑️</button>`:''}
+          </div>`).join('')}
+    </div>`;
+}
+
+function renderBuatPengumuman() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header"><h1>✏️ Buat Pengumuman</h1></div>`;
+  openModal('modalPengumuman');
+}
+
+async function submitPengumuman() {
+  const body = {
+    judul: document.getElementById('p_judul').value,
+    isi: document.getElementById('p_isi').value,
+    tanggal_tayang: document.getElementById('p_tayang').value || null,
+    tanggal_expired: document.getElementById('p_expired').value || null,
+    target_role: document.getElementById('p_target').value || null,
+    is_pinned: document.getElementById('p_pinned').checked,
+  };
+  if (!body.judul || !body.isi) { showToast('Judul dan isi wajib diisi','error'); return; }
+  const res = await fetch(`${API_BASE}/pengumuman`, { method:'POST', headers: authHeaders(), body: JSON.stringify(body) });
+  const json = await res.json();
+  closeModal('modalPengumuman');
+  if (res.ok && json.success) { showToast('Pengumuman berhasil dipublikasikan!','success'); document.getElementById('formPengumuman').reset(); showPage('pengumuman'); }
+  else showToast(json.message||'Gagal membuat pengumuman','error');
+}
+
+async function hapusPengumuman(id) {
+  if (!confirm('Hapus pengumuman ini?')) return;
+  const res = await fetch(`${API_BASE}/pengumuman/${id}`, { method:'DELETE', headers: authHeaders() });
+  const json = await res.json();
+  if (res.ok) { showToast('Pengumuman dihapus','success'); showPage('pengumuman'); }
+  else showToast(json.message||'Gagal menghapus','error');
+}
+
+// ── PROFIL ──
+function renderProfil() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header"><h1>👤 Profil Saya</h1></div>
+    <div class="card" style="max-width:460px;">
+      <div class="card-body" style="text-align:center;">
+        <div style="width:80px;height:80px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;font-weight:700;margin:0 auto 1rem;">
+          ${currentUser?.nama_lengkap?.charAt(0).toUpperCase()}
+        </div>
+        <h2 style="font-size:1.2rem;font-weight:700;">${currentUser?.nama_lengkap}</h2>
+        <p style="color:var(--text-mid);font-size:.85rem;margin-bottom:1.5rem;">Guru</p>
+        <table style="width:100%;text-align:left;border-collapse:collapse;font-size:.875rem;">
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);width:120px;">Username</td><td style="padding:.6rem 0;font-weight:600;">@${currentUser?.username}</td></tr>
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);">Email</td><td style="padding:.6rem 0;">${currentUser?.email||'-'}</td></tr>
+        </table>
+      </div>
+    </div>`;
+}
+
+async function fetchPengumuman() {
+  try {
+    const res = await fetch(`${API_BASE}/pengumuman?limit=20`, { headers: authHeaders() });
+    const json = await res.json();
+    return json.data?.pengumuman || [];
+  } catch { return []; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Siswa — Portal Akademik SMA Gajah Mada</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+
+<!-- ============================================================
+  DASHBOARD SISWA
+  Menampilkan: Ringkasan Nilai, Absensi, Pengumuman, Ekskul
+  Data diambil dari API secara dinamis menggunakan Fetch API.
+============================================================ -->
+
+<!-- Overlay sidebar (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Menu Navigasi">
+
+    <!-- Brand -->
+    <div class="sidebar-brand">
+      <div class="brand-logo">GM</div>
+      <div class="brand-text">
+        <h2>SMA Gajah Mada</h2>
+        <span>Portal Akademik</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Menu Utama</span>
+
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+        <span class="nav-icon">🏠</span> Dashboard
+      </button>
+
+      <button class="nav-item" data-page="nilai" onclick="showPage('nilai')">
+        <span class="nav-icon">📊</span> Nilai Saya
+      </button>
+
+      <button class="nav-item" data-page="absensi" onclick="showPage('absensi')">
+        <span class="nav-icon">📅</span> Absensi
+      </button>
+
+      <button class="nav-item" data-page="pengumuman" onclick="showPage('pengumuman')">
+        <span class="nav-icon">📢</span> Pengumuman
+        <span class="nav-badge" id="badgePengumuman" style="display:none">0</span>
+      </button>
+
+      <span class="nav-section-label">Kegiatan</span>
+
+      <button class="nav-item" data-page="ekskul" onclick="showPage('ekskul')">
+        <span class="nav-icon">🏆</span> Ekstrakurikuler
+      </button>
+
+      <button class="nav-item" data-page="pendaftaran-ekskul" onclick="showPage('pendaftaran-ekskul')">
+        <span class="nav-icon">📋</span> Pendaftaran Saya
+      </button>
+
+      <span class="nav-section-label">Akun</span>
+
+      <button class="nav-item" data-page="profil" onclick="showPage('profil')">
+        <span class="nav-icon">👤</span> Profil Saya
+      </button>
+    </nav>
+
+    <!-- Profil -->
+    <div class="sidebar-profile">
+      <div class="profile-avatar" id="sidebarAvatar">R</div>
+      <div class="profile-info">
+        <div class="profile-name" id="sidebarName">Memuat...</div>
+        <div class="profile-role">Siswa</div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="Keluar" aria-label="Keluar">🚪</button>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <button class="topbar-toggle" id="topbarToggle" aria-label="Buka menu">☰</button>
+      <span class="topbar-title" id="topbarTitle">Dashboard</span>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbarDate"></span>
+      </div>
+    </header>
+
+    <!-- Page Content Container -->
+    <main class="page-content" id="pageContent">
+      <!-- Konten halaman dimuat secara dinamis di sini -->
+    </main>
+
+  </div>
+</div>
+
+<!-- ── MODAL DETAIL PENGUMUMAN ── -->
+<div class="modal-overlay" id="modalPengumuman" role="dialog" aria-modal="true" aria-labelledby="modalPengumumanTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalPengumumanTitle">Judul Pengumuman</h3>
+      <button class="modal-close" onclick="closeModal('modalPengumuman')" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="modal-body" id="modalPengumumanBody"></div>
+  </div>
+</div>
+
+<!-- ── MODAL KONFIRMASI DAFTAR EKSKUL ── -->
+<div class="modal-overlay" id="modalDaftar" role="dialog" aria-modal="true" aria-labelledby="modalDaftarTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalDaftarTitle">Konfirmasi Pendaftaran</h3>
+      <button class="modal-close" onclick="closeModal('modalDaftar')" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="modal-body" id="modalDaftarBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalDaftar')">Batal</button>
+      <button class="btn btn-primary" id="btnKonfirmasiDaftar">Daftar Sekarang</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST CONTAINER ── -->
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<!-- ================================================================
+     JAVASCRIPT DASHBOARD SISWA
+================================================================ -->
+<script>
+'use strict';
+
+// ──────────────────────────────────────────────
+// KONFIGURASI & STATE GLOBAL
+// ──────────────────────────────────────────────
+const API_BASE = '/api/v1';
+let currentUser     = null;
+let currentSiswaId  = null;     // ID di tabel siswa_profile
+let activePage      = 'dashboard';
+let selectedEkskulId = null;    // untuk modal konfirmasi
+
+// ──────────────────────────────────────────────
+// INISIALISASI
+// ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Cek sesi login
+  const token    = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
+
+  if (!token || !userData) {
+    window.location.href = '/';
+    return;
+  }
+
+  try {
+    currentUser = JSON.parse(userData);
+    if (currentUser.role !== 'siswa') {
+      // Redirect ke dashboard yang sesuai
+      redirectByRole(currentUser.role);
+      return;
+    }
+    // Ambil siswa profile id
+    if (currentUser.profile) {
+      currentSiswaId = currentUser.profile.id;
+    }
+  } catch (e) {
+    localStorage.clear();
+    window.location.href = '/';
+    return;
+  }
+
+  // 2. Update UI header sidebar
+  updateSidebarProfile();
+
+  // 3. Tampilkan tanggal hari ini
+  document.getElementById('topbarDate').textContent = formatDateLong(new Date());
+
+  // 4. Setup sidebar toggle (mobile)
+  document.getElementById('topbarToggle').addEventListener('click', toggleSidebar);
+  document.getElementById('sidebarOverlay').addEventListener('click', closeSidebar);
+
+  // 5. Load halaman dashboard
+  showPage('dashboard');
+});
+
+// ──────────────────────────────────────────────
+// HELPER FUNGSI
+// ──────────────────────────────────────────────
+
+/** Header Authorization untuk semua fetch */
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  };
+}
+
+/** Format angka jadi desimal 2 digit */
+function fmt(n) {
+  if (n === null || n === undefined) return '-';
+  return parseFloat(n).toFixed(2);
+}
+
+/** Format tanggal panjang: "Senin, 15 Oktober 2025" */
+function formatDateLong(date) {
+  return date.toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+}
+
+/** Format tanggal pendek: "15 Okt 2025" */
+function formatDateShort(dateStr) {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+}
+
+/** Redirect berdasarkan role */
+function redirectByRole(role) {
+  const routes = {
+    admin: '/pages/dashboard-admin.html',
+    guru: '/pages/dashboard-guru.html',
+    orang_tua: '/pages/dashboard-ortu.html',
+  };
+  window.location.href = routes[role] || '/';
+}
+
+/** Tampilkan toast notifikasi */
+function showToast(message, type = 'info') {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+/** Buka modal */
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+/** Tutup modal */
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+/** Update info profil di sidebar */
+function updateSidebarProfile() {
+  if (!currentUser) return;
+  document.getElementById('sidebarName').textContent = currentUser.nama_lengkap;
+  document.getElementById('sidebarAvatar').textContent =
+    currentUser.nama_lengkap.charAt(0).toUpperCase();
+}
+
+/** Sidebar toggle (mobile) */
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+/** Logout */
+function logout() {
+  if (confirm('Apakah Anda yakin ingin keluar?')) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+  }
+}
+
+// ──────────────────────────────────────────────
+// ROUTER HALAMAN (SPA sederhana)
+// ──────────────────────────────────────────────
+const PAGE_TITLES = {
+  dashboard:           'Dashboard',
+  nilai:               'Nilai Saya',
+  absensi:             'Absensi',
+  pengumuman:          'Pengumuman Sekolah',
+  ekskul:              'Ekstrakurikuler',
+  'pendaftaran-ekskul':'Pendaftaran Saya',
+  profil:              'Profil Saya',
+};
+
+function showPage(page) {
+  activePage = page;
+
+  // Update nav active state
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+
+  // Update topbar title
+  document.getElementById('topbarTitle').textContent = PAGE_TITLES[page] || page;
+
+  // Tutup sidebar mobile
+  closeSidebar();
+
+  // Render halaman
+  const content = document.getElementById('pageContent');
+  content.innerHTML = renderLoadingState();
+
+  const renders = {
+    dashboard:           renderDashboard,
+    nilai:               renderNilai,
+    absensi:             renderAbsensi,
+    pengumuman:          renderPengumuman,
+    ekskul:              renderEkskul,
+    'pendaftaran-ekskul': renderPendaftaranSaya,
+    profil:              renderProfil,
+  };
+
+  (renders[page] || (() => content.innerHTML = '<p>Halaman tidak ditemukan.</p>'))();
+}
+
+function renderLoadingState() {
+  return `<div class="loading-overlay">
+    <div class="spinner-large"></div>
+    <span>Memuat data...</span>
+  </div>`;
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 1: DASHBOARD (ringkasan semua)
+// ──────────────────────────────────────────────
+async function renderDashboard() {
+  // Ambil data secara paralel
+  const [nilaiData, absensiData, pengumumanData] = await Promise.allSettled([
+    fetchNilai(),
+    fetchAbsensi(),
+    fetchPengumuman(),
+  ]);
+
+  const nilai      = nilaiData.status === 'fulfilled' ? nilaiData.value : null;
+  const absensi    = absensiData.status === 'fulfilled' ? absensiData.value : null;
+  const pengumuman = pengumumanData.status === 'fulfilled' ? pengumumanData.value : [];
+
+  // Hitung statistik
+  const rataRata   = nilai?.rata_rata || '-';
+  const jmlMapel   = nilai?.nilai?.length || 0;
+  const pctHadir   = absensi?.persentase_hadir || '0%';
+  const totalHadir = absensi?.ringkasan?.H || 0;
+  const totalAlpa  = absensi?.ringkasan?.A || 0;
+
+  // Update badge pengumuman
+  if (pengumuman.length > 0) {
+    const badge = document.getElementById('badgePengumuman');
+    badge.textContent = pengumuman.length;
+    badge.style.display = 'inline-flex';
+  }
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>👋 Selamat Datang, ${currentUser?.nama_lengkap?.split(' ')[0] || 'Siswa'}!</h1>
+      <p>${formatDateLong(new Date())}</p>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div class="stat-info">
+          <div class="stat-value">${rataRata}</div>
+          <div class="stat-label">Rata-rata Nilai</div>
+          <div class="stat-sub">${jmlMapel} Mata Pelajaran</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+          <div class="stat-value">${pctHadir}</div>
+          <div class="stat-label">Kehadiran</div>
+          <div class="stat-sub">${totalHadir} hari hadir</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow">📢</div>
+        <div class="stat-info">
+          <div class="stat-value">${pengumuman.length}</div>
+          <div class="stat-label">Pengumuman</div>
+          <div class="stat-sub">Informasi terbaru</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">⚠️</div>
+        <div class="stat-info">
+          <div class="stat-value">${totalAlpa}</div>
+          <div class="stat-label">Alpa</div>
+          <div class="stat-sub">Tanpa keterangan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Baris: Nilai ringkasan + Pengumuman -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+
+      <!-- Ringkasan Nilai -->
+      <div class="card">
+        <div class="card-body">
+          <div class="section-header">
+            <span class="section-title">📊 Nilai Terkini</span>
+            <button class="btn-link" onclick="showPage('nilai')">Lihat Semua →</button>
+          </div>
+          ${renderNilaiMini(nilai?.nilai?.slice(0, 5))}
+        </div>
+      </div>
+
+      <!-- Pengumuman Terbaru -->
+      <div class="card">
+        <div class="card-body">
+          <div class="section-header">
+            <span class="section-title">📢 Pengumuman Terbaru</span>
+            <button class="btn-link" onclick="showPage('pengumuman')">Lihat Semua →</button>
+          </div>
+          ${renderPengumumanMini(pengumuman.slice(0, 3))}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Absensi Ringkasan -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-body">
+        <div class="section-header">
+          <span class="section-title">📅 Ringkasan Absensi</span>
+          <button class="btn-link" onclick="showPage('absensi')">Detail →</button>
+        </div>
+        ${renderAbsensiMini(absensi)}
+      </div>
+    </div>
+  `;
+}
+
+// Widget mini untuk dashboard
+function renderNilaiMini(list) {
+  if (!list || list.length === 0) {
+    return `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Belum ada data nilai</div></div>`;
+  }
+  return `<div class="table-responsive">
+    <table class="data-table">
+      <thead><tr><th>Mata Pelajaran</th><th>Nilai Akhir</th><th>Status</th></tr></thead>
+      <tbody>
+        ${list.map(n => `
+          <tr>
+            <td>${n.nama_mapel}</td>
+            <td><strong>${fmt(n.nilai_akhir)}</strong></td>
+            <td><span class="badge ${n.keterangan === 'Tuntas' ? 'badge-success' : 'badge-danger'}">${n.keterangan || '-'}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderPengumumanMini(list) {
+  if (!list || list.length === 0) {
+    return `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada pengumuman</div></div>`;
+  }
+  return `<div class="announcement-list">
+    ${list.map(p => `
+      <button class="announcement-item ${p.is_pinned ? 'pinned' : ''}"
+              onclick="showDetailPengumuman(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+        <div class="ann-icon ${p.is_pinned ? 'pinned-icon' : ''}">${p.is_pinned ? '📌' : '📢'}</div>
+        <div class="ann-content">
+          <div class="ann-title">${p.judul}</div>
+          <div class="ann-meta">${formatDateShort(p.tanggal_tayang)} · ${p.nama_penulis}</div>
+        </div>
+      </button>`).join('')}
+  </div>`;
+}
+
+function renderAbsensiMini(absensi) {
+  if (!absensi) return `<p style="color:var(--text-light); font-size:.85rem;">Data absensi tidak tersedia</p>`;
+  const r = absensi.ringkasan;
+  const pct = parseFloat(absensi.persentase_hadir) || 0;
+  return `
+    <div class="absensi-summary">
+      <div class="absensi-item hadir"><div class="absensi-count">${r.H || 0}</div><div class="absensi-label">Hadir</div></div>
+      <div class="absensi-item izin"> <div class="absensi-count">${r.I || 0}</div><div class="absensi-label">Izin</div></div>
+      <div class="absensi-item sakit"><div class="absensi-count">${r.S || 0}</div><div class="absensi-label">Sakit</div></div>
+      <div class="absensi-item alpa"> <div class="absensi-count">${r.A || 0}</div><div class="absensi-label">Alpa</div></div>
+    </div>
+    <div class="progress-wrapper">
+      <div class="progress-label">
+        <span>Persentase Kehadiran</span>
+        <span>${absensi.persentase_hadir}</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 2: NILAI LENGKAP
+// ──────────────────────────────────────────────
+async function renderNilai() {
+  const data = await fetchNilai();
+
+  if (!data) {
+    document.getElementById('pageContent').innerHTML = `
+      <div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Gagal memuat data nilai</div></div>`;
+    return;
+  }
+
+  const nilai = data.nilai || [];
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📊 Nilai Saya</h1>
+      <p>Semester 1 — Tahun Ajaran 2025/2026 &nbsp;|&nbsp; Rata-rata: <strong>${data.rata_rata || '-'}</strong></p>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Mata Pelajaran</th>
+              <th>KKM</th>
+              <th>Nilai Harian</th>
+              <th>Nilai UTS</th>
+              <th>Nilai UAS</th>
+              <th>Nilai Akhir</th>
+              <th>Keterangan</th>
+              <th>Guru</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${nilai.length === 0
+              ? `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada data nilai</td></tr>`
+              : nilai.map((n, i) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td><strong>${n.nama_mapel}</strong><br><small style="color:var(--text-light)">${n.kode_mapel}</small></td>
+                  <td>${n.kkm}</td>
+                  <td>${fmt(n.nilai_harian)}</td>
+                  <td>${fmt(n.nilai_uts)}</td>
+                  <td>${fmt(n.nilai_uas)}</td>
+                  <td><strong style="font-size:1rem; color:${parseFloat(n.nilai_akhir) >= n.kkm ? 'var(--secondary)' : 'var(--danger)'}">${fmt(n.nilai_akhir)}</strong></td>
+                  <td><span class="badge ${n.keterangan === 'Tuntas' ? 'badge-success' : 'badge-danger'}">${n.keterangan || '-'}</span></td>
+                  <td style="font-size:.8rem">${n.nama_guru}</td>
+                </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 3: ABSENSI LENGKAP
+// ──────────────────────────────────────────────
+async function renderAbsensi() {
+  const data = await fetchAbsensi();
+
+  if (!data) {
+    document.getElementById('pageContent').innerHTML = `
+      <div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Gagal memuat data absensi</div></div>`;
+    return;
+  }
+
+  const STATUS_LABEL = { H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpa' };
+  const STATUS_BADGE = { H: 'badge-success', I: 'badge-info', S: 'badge-warning', A: 'badge-danger' };
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📅 Absensi Saya</h1>
+      <p>Rekap kehadiran bulan ini</p>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-body">
+        <div class="absensi-summary">
+          <div class="absensi-item hadir"><div class="absensi-count">${data.ringkasan.H || 0}</div><div class="absensi-label">Hadir</div></div>
+          <div class="absensi-item izin"> <div class="absensi-count">${data.ringkasan.I || 0}</div><div class="absensi-label">Izin</div></div>
+          <div class="absensi-item sakit"><div class="absensi-count">${data.ringkasan.S || 0}</div><div class="absensi-label">Sakit</div></div>
+          <div class="absensi-item alpa"> <div class="absensi-count">${data.ringkasan.A || 0}</div><div class="absensi-label">Alpa</div></div>
+        </div>
+        <div class="progress-wrapper" style="margin-top:.75rem;">
+          <div class="progress-label">
+            <span>Persentase Kehadiran</span>
+            <strong>${data.persentase_hadir}</strong>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${parseFloat(data.persentase_hadir) || 0}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr><th>Tanggal</th><th>Mata Pelajaran</th><th>Status</th><th>Keterangan</th><th>Guru</th></tr>
+          </thead>
+          <tbody>
+            ${data.absensi.length === 0
+              ? `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada data absensi</td></tr>`
+              : data.absensi.map(a => `
+                <tr>
+                  <td>${formatDateShort(a.tanggal)}</td>
+                  <td>${a.nama_mapel || 'Umum'}</td>
+                  <td><span class="badge ${STATUS_BADGE[a.status]}">${STATUS_LABEL[a.status]}</span></td>
+                  <td style="font-size:.82rem; color:var(--text-mid)">${a.keterangan || '-'}</td>
+                  <td style="font-size:.8rem">${a.nama_guru}</td>
+                </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 4: PENGUMUMAN
+// ──────────────────────────────────────────────
+async function renderPengumuman() {
+  const list = await fetchPengumuman();
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📢 Pengumuman Sekolah</h1>
+      <p>Informasi terbaru dari sekolah</p>
+    </div>
+    <div class="announcement-list" id="announcementList">
+      ${list.length === 0
+        ? `<div class="empty-state card"><div class="card-body">
+             <div class="empty-icon">📭</div>
+             <div class="empty-title">Tidak ada pengumuman saat ini</div>
+           </div></div>`
+        : list.map(p => `
+          <button class="announcement-item ${p.is_pinned ? 'pinned' : ''}"
+                  onclick="showDetailPengumuman(${JSON.stringify(p).replace(/"/g, '&quot;')})">
+            <div class="ann-icon ${p.is_pinned ? 'pinned-icon' : ''}">${p.is_pinned ? '📌' : '📢'}</div>
+            <div class="ann-content">
+              <div class="ann-title">${p.judul}</div>
+              <div class="ann-snippet">${p.isi}</div>
+              <div class="ann-meta">
+                ${formatDateShort(p.tanggal_tayang)} · ${p.nama_penulis}
+                ${p.is_pinned ? '<span class="badge badge-warning" style="margin-left:.5rem">📌 Disematkan</span>' : ''}
+              </div>
+            </div>
+          </button>`).join('')}
+    </div>`;
+}
+
+/** Tampilkan detail pengumuman di modal */
+function showDetailPengumuman(pengumuman) {
+  document.getElementById('modalPengumumanTitle').textContent = pengumuman.judul;
+  document.getElementById('modalPengumumanBody').innerHTML = `
+    <p style="font-size:.8rem; color:var(--text-light); margin-bottom:1rem;">
+      ${formatDateShort(pengumuman.tanggal_tayang)} · ${pengumuman.nama_penulis}
+    </p>
+    <div style="line-height:1.8;">${pengumuman.isi}</div>
+    ${pengumuman.lampiran ? `<p style="margin-top:1rem;"><a href="/uploads/lampiran/${pengumuman.lampiran}" target="_blank">📎 Unduh Lampiran</a></p>` : ''}
+  `;
+  openModal('modalPengumuman');
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 5: EKSKUL
+// ──────────────────────────────────────────────
+async function renderEkskul() {
+  const ekskulList = await fetchEkskul();
+  const daftarSaya = await fetchPendaftaranSaya();
+
+  // Buat set ekskul_id yang sudah didaftarkan siswa
+  const sudahDaftar = new Set((daftarSaya || []).map(d => d.ekskul_id || d.id));
+
+  const EKSKUL_EMOJI = {
+    'Pramuka': '⚜️', 'Paduan Suara': '🎵', 'Basket': '🏀',
+    'PMR': '🏥', 'English Club': '🗣️', 'Robotika': '🤖',
+    'Volly Ball': '🏐', 'Jurnalistik': '📰',
+  };
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>🏆 Ekstrakurikuler</h1>
+      <p>Pilih dan daftarkan dirimu ke kegiatan ekstrakurikuler</p>
+    </div>
+    <div class="ekskul-grid" id="ekskulGrid">
+      ${ekskulList.length === 0
+        ? `<div class="empty-state"><div class="empty-icon">🏆</div><div class="empty-title">Tidak ada ekskul tersedia</div></div>`
+        : ekskulList.map(e => {
+            const pct       = Math.round((e.kuota_terisi / e.kuota_max) * 100);
+            const fillClass = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : '';
+            const isDaftar  = sudahDaftar.has(e.id);
+            const isFull    = e.kuota_sisa <= 0;
+            const emoji     = EKSKUL_EMOJI[e.nama_ekskul] || '🎯';
+
+            return `
+              <div class="ekskul-card">
+                <div class="ekskul-header">${emoji}</div>
+                <div class="ekskul-body">
+                  <div class="ekskul-name">${e.nama_ekskul}</div>
+                  <div class="ekskul-info">⏰ ${e.jadwal}</div>
+                  <div class="ekskul-info">📍 ${e.tempat || '-'}</div>
+                  ${e.nama_pembina ? `<div class="ekskul-info">👨‍🏫 ${e.nama_pembina}</div>` : ''}
+                  <div class="kuota-bar">
+                    <div class="kuota-fill ${fillClass}" style="width:${Math.min(pct,100)}%"></div>
+                  </div>
+                  <div class="kuota-text">
+                    Kuota: ${e.kuota_terisi}/${e.kuota_max}
+                    ${isFull ? '<span class="badge badge-danger" style="margin-left:.5rem">Penuh</span>' : `<span style="color:var(--secondary)"> (${e.kuota_sisa} tempat lagi)</span>`}
+                  </div>
+                  <button
+                    class="btn-daftar ${isDaftar ? 'registered' : ''}"
+                    onclick="konfirmasiDaftar(${e.id}, '${e.nama_ekskul.replace(/'/g,'\\\'')}')"
+                    ${isDaftar || isFull ? 'disabled' : ''}
+                  >
+                    ${isDaftar ? '✅ Sudah Terdaftar' : isFull ? '❌ Kuota Penuh' : '+ Daftar Sekarang'}
+                  </button>
+                </div>
+              </div>`;
+          }).join('')}
+    </div>`;
+}
+
+/** Tampilkan modal konfirmasi sebelum daftar */
+function konfirmasiDaftar(ekskulId, namaEkskul) {
+  selectedEkskulId = ekskulId;
+  document.getElementById('modalDaftarTitle').textContent = 'Konfirmasi Pendaftaran';
+  document.getElementById('modalDaftarBody').innerHTML = `
+    <p>Apakah Anda yakin ingin mendaftar ke ekstrakurikuler:</p>
+    <p style="font-weight:700; font-size:1.1rem; margin:.75rem 0; color:var(--primary);">${namaEkskul}</p>
+    <p style="font-size:.85rem; color:var(--text-mid);">
+      Pendaftaran akan menunggu persetujuan dari pembina atau administrator.
+    </p>
+  `;
+  document.getElementById('btnKonfirmasiDaftar').onclick = () => daftarEkskul(ekskulId);
+  openModal('modalDaftar');
+}
+
+/** Kirim request pendaftaran ekskul ke API */
+async function daftarEkskul(ekskulId) {
+  document.getElementById('btnKonfirmasiDaftar').disabled = true;
+  document.getElementById('btnKonfirmasiDaftar').textContent = 'Memproses...';
+
+  try {
+    const res = await fetch(`${API_BASE}/ekskul/daftar`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ ekskul_id: ekskulId }),
+    });
+
+    const result = await res.json();
+    closeModal('modalDaftar');
+
+    if (res.ok && result.success) {
+      showToast(result.message || 'Pendaftaran berhasil dikirim!', 'success');
+      // Reload halaman ekskul untuk update status tombol
+      setTimeout(() => renderEkskul(), 500);
+    } else {
+      showToast(result.message || 'Pendaftaran gagal.', 'error');
+    }
+  } catch (err) {
+    closeModal('modalDaftar');
+    showToast('Tidak dapat terhubung ke server.', 'error');
+  } finally {
+    document.getElementById('btnKonfirmasiDaftar').disabled = false;
+    document.getElementById('btnKonfirmasiDaftar').textContent = 'Daftar Sekarang';
+  }
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 6: STATUS PENDAFTARAN SAYA
+// ──────────────────────────────────────────────
+async function renderPendaftaranSaya() {
+  const list = await fetchPendaftaranSaya();
+
+  const STATUS_STYLE = {
+    pending:  { badge: 'badge-warning', icon: '⏳' },
+    diterima: { badge: 'badge-success', icon: '✅' },
+    ditolak:  { badge: 'badge-danger',  icon: '❌' },
+  };
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📋 Pendaftaran Ekskul Saya</h1>
+      <p>Status pendaftaran ekstrakurikuler Anda</p>
+    </div>
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead><tr><th>Ekstrakurikuler</th><th>Jadwal</th><th>Tgl. Daftar</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+          <tbody>
+            ${!list || list.length === 0
+              ? `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-light);">
+                   Anda belum mendaftar ekskul apapun.
+                   <br><button class="btn-link" onclick="showPage('ekskul')" style="margin-top:.5rem;">Lihat Ekskul →</button>
+                 </td></tr>`
+              : list.map(d => {
+                  const st = STATUS_STYLE[d.status] || STATUS_STYLE.pending;
+                  return `
+                    <tr>
+                      <td><strong>${d.nama_ekskul}</strong></td>
+                      <td style="font-size:.82rem">${d.jadwal}</td>
+                      <td>${formatDateShort(d.tanggal_daftar)}</td>
+                      <td><span class="badge ${st.badge}">${st.icon} ${d.status}</span></td>
+                      <td style="font-size:.82rem; color:var(--text-mid)">${d.alasan_penolakan || '-'}</td>
+                      <td>
+                        ${d.status === 'pending'
+                          ? `<button class="btn btn-secondary" style="font-size:.78rem; padding:.3rem .7rem;"
+                                    onclick="batalDaftar(${d.id})">Batalkan</button>`
+                          : '-'}
+                      </td>
+                    </tr>`;
+                }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/** Batalkan pendaftaran */
+async function batalDaftar(pendaftaranId) {
+  if (!confirm('Yakin ingin membatalkan pendaftaran ini?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/ekskul/pendaftaran/${pendaftaranId}/batal`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      showToast('Pendaftaran berhasil dibatalkan', 'success');
+      renderPendaftaranSaya();
+    } else {
+      showToast(result.message || 'Gagal membatalkan pendaftaran', 'error');
+    }
+  } catch (err) {
+    showToast('Tidak dapat terhubung ke server', 'error');
+  }
+}
+
+// ──────────────────────────────────────────────
+// HALAMAN 7: PROFIL
+// ──────────────────────────────────────────────
+function renderProfil() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>👤 Profil Saya</h1>
+    </div>
+    <div class="card" style="max-width:480px;">
+      <div class="card-body" style="text-align:center;">
+        <div style="width:80px; height:80px; border-radius:50%; background:var(--primary);
+                    display:flex; align-items:center; justify-content:center;
+                    font-size:2rem; color:white; font-weight:700; margin:0 auto 1rem;">
+          ${currentUser?.nama_lengkap?.charAt(0).toUpperCase() || 'S'}
+        </div>
+        <h2 style="font-size:1.2rem; font-weight:700;">${currentUser?.nama_lengkap || '-'}</h2>
+        <p style="color:var(--text-mid); font-size:.85rem; margin-bottom:1.5rem; text-transform:capitalize;">
+          ${currentUser?.role || 'Siswa'}
+        </p>
+        <table style="width:100%; text-align:left; border-collapse:collapse; font-size:.875rem;">
+          <tr><td style="padding:.6rem 0; color:var(--text-mid); width:120px;">Username</td>
+              <td style="padding:.6rem 0; font-weight:600;">@${currentUser?.username || '-'}</td></tr>
+          <tr><td style="padding:.6rem 0; color:var(--text-mid);">Email</td>
+              <td style="padding:.6rem 0;">${currentUser?.email || '-'}</td></tr>
+          <tr><td style="padding:.6rem 0; color:var(--text-mid);">NIS</td>
+              <td style="padding:.6rem 0;">${currentUser?.profile?.nis || '-'}</td></tr>
+        </table>
+        <button class="btn btn-secondary" style="margin-top:1.5rem; width:100%;"
+                onclick="showPage('profil')">
+          ✏️ Edit Profil (coming soon)
+        </button>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// FUNGSI FETCH API
+// ──────────────────────────────────────────────
+
+/** Fetch nilai siswa (semester 1, tahun ajaran sekarang) */
+async function fetchNilai() {
+  if (!currentSiswaId) return null;
+  try {
+    const res = await fetch(
+      `${API_BASE}/nilai/siswa/${currentSiswaId}?semester=1&tahun_ajaran=2025/2026`,
+      { headers: authHeaders() }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch { return null; }
+}
+
+/** Fetch absensi siswa */
+async function fetchAbsensi() {
+  if (!currentSiswaId) return null;
+  try {
+    const now = new Date();
+    const res = await fetch(
+      `${API_BASE}/absensi/siswa/${currentSiswaId}?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`,
+      { headers: authHeaders() }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch { return null; }
+}
+
+/** Fetch pengumuman sekolah */
+async function fetchPengumuman() {
+  try {
+    const res = await fetch(`${API_BASE}/pengumuman?limit=20`, { headers: authHeaders() });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data?.pengumuman || [];
+  } catch { return []; }
+}
+
+/** Fetch list ekskul */
+async function fetchEkskul() {
+  try {
+    const res = await fetch(`${API_BASE}/ekskul`, { headers: authHeaders() });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch { return []; }
+}
+
+/** Fetch pendaftaran ekskul siswa ini */
+async function fetchPendaftaranSaya() {
+  try {
+    const res = await fetch(`${API_BASE}/ekskul/pendaftaran/saya`, { headers: authHeaders() });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch { return []; }
+}
+</script>
+</body>
+</html>

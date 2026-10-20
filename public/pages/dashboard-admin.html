@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Admin — Portal Akademik SMA Gajah Mada</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo" style="background:#e02424;">GM</div>
+      <div class="brand-text"><h2>SMA Gajah Mada</h2><span>Admin Panel</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Dashboard</span>
+      <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span> Dashboard</button>
+
+      <span class="nav-section-label">Manajemen</span>
+      <button class="nav-item" data-page="users" onclick="showPage('users')"><span class="nav-icon">👥</span> Manajemen User</button>
+      <button class="nav-item" data-page="ekskul" onclick="showPage('ekskul')"><span class="nav-icon">🏆</span> Ekstrakurikuler</button>
+      <button class="nav-item" data-page="pendaftaran" onclick="showPage('pendaftaran')"><span class="nav-icon">📋</span> Pendaftaran Ekskul</button>
+
+      <span class="nav-section-label">Akademik</span>
+      <button class="nav-item" data-page="pengumuman" onclick="showPage('pengumuman')"><span class="nav-icon">📢</span> Pengumuman</button>
+
+      <span class="nav-section-label">Akun</span>
+      <button class="nav-item" data-page="profil" onclick="showPage('profil')"><span class="nav-icon">👤</span> Profil Saya</button>
+    </nav>
+    <div class="sidebar-profile">
+      <div class="profile-avatar" id="sidebarAvatar" style="background:#e02424;">A</div>
+      <div class="profile-info">
+        <div class="profile-name" id="sidebarName">Memuat...</div>
+        <div class="profile-role">Administrator</div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="Keluar">🚪</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar-toggle" id="topbarToggle">☰</button>
+      <span class="topbar-title" id="topbarTitle">Dashboard Admin</span>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbarDate"></span>
+      </div>
+    </header>
+    <main class="page-content" id="pageContent"></main>
+  </div>
+</div>
+
+<!-- Modal Tambah User -->
+<div class="modal-overlay" id="modalUser">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Tambah User Baru</h3>
+      <button class="modal-close" onclick="closeModal('modalUser')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="formUser">
+        <div style="display:grid;gap:.85rem;">
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap</label>
+            <input type="text" id="u_nama" class="form-control" placeholder="Nama lengkap" required/>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="text" id="u_username" class="form-control" placeholder="username" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role</label>
+              <select id="u_role" class="form-control">
+                <option value="siswa">Siswa</option>
+                <option value="guru">Guru</option>
+                <option value="orang_tua">Orang Tua</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="u_password" class="form-control" placeholder="Min. 8 karakter" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email (opsional)</label>
+            <input type="email" id="u_email" class="form-control" placeholder="email@domain.com"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">No. HP (opsional)</label>
+            <input type="text" id="u_hp" class="form-control" placeholder="08xxxxxxxxxx"/>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalUser')">Batal</button>
+      <button class="btn btn-primary" onclick="submitUser()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah/Edit Ekskul -->
+<div class="modal-overlay" id="modalEkskul">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalEkskulTitle">Tambah Ekstrakurikuler</h3>
+      <button class="modal-close" onclick="closeModal('modalEkskul')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="e_id"/>
+      <div style="display:grid;gap:.85rem;">
+        <div class="form-group">
+          <label class="form-label">Nama Ekskul</label>
+          <input type="text" id="e_nama" class="form-control" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deskripsi</label>
+          <textarea id="e_deskripsi" class="form-control" rows="3" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div class="form-group">
+            <label class="form-label">Jadwal</label>
+            <input type="text" id="e_jadwal" class="form-control" placeholder="Senin, 15.00-17.00" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tempat</label>
+            <input type="text" id="e_tempat" class="form-control" placeholder="Lapangan / Aula"/>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div class="form-group">
+            <label class="form-label">Kuota Maksimal</label>
+            <input type="number" id="e_kuota" class="form-control" min="1" max="200" value="30" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Biaya (Rp)</label>
+            <input type="number" id="e_biaya" class="form-control" min="0" value="0"/>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalEkskul')">Batal</button>
+      <button class="btn btn-primary" onclick="submitEkskul()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Buat Pengumuman -->
+<div class="modal-overlay" id="modalPengumuman">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Buat Pengumuman</h3>
+      <button class="modal-close" onclick="closeModal('modalPengumuman')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;gap:.85rem;">
+        <div class="form-group">
+          <label class="form-label">Judul</label>
+          <input type="text" id="p_judul" class="form-control" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Isi Pengumuman</label>
+          <textarea id="p_isi" class="form-control" rows="5" style="resize:vertical;" required></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div class="form-group">
+            <label class="form-label">Tanggal Tayang</label>
+            <input type="date" id="p_tayang" class="form-control"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tanggal Expired</label>
+            <input type="date" id="p_expired" class="form-control"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target</label>
+          <select id="p_target" class="form-control">
+            <option value="">Semua Pengguna</option>
+            <option value="siswa">Siswa</option>
+            <option value="orang_tua">Orang Tua</option>
+            <option value="guru">Guru</option>
+          </select>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="p_pinned"/> Sematkan di atas (Pinned)
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalPengumuman')">Batal</button>
+      <button class="btn btn-primary" onclick="submitPengumuman()">Publikasikan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+'use strict';
+const API_BASE = '/api/v1';
+let currentUser = null;
+let allUsers = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const token = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
+  if (!token || !userData) { window.location.href = '/'; return; }
+  try {
+    currentUser = JSON.parse(userData);
+    if (currentUser.role !== 'admin') { window.location.href = '/'; return; }
+  } catch { localStorage.clear(); window.location.href = '/'; return; }
+
+  document.getElementById('sidebarName').textContent = currentUser.nama_lengkap;
+  document.getElementById('sidebarAvatar').textContent = currentUser.nama_lengkap.charAt(0).toUpperCase();
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('topbarToggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  });
+  document.getElementById('sidebarOverlay').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  });
+  showPage('dashboard');
+});
+
+function authHeaders() {
+  return { 'Content-Type':'application/json', 'Authorization':`Bearer ${localStorage.getItem('token')}` };
+}
+function showToast(msg, type='info') {
+  const icons = {success:'✅',error:'❌',info:'ℹ️'};
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  c.appendChild(t); setTimeout(()=>t.remove(),4000);
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function logout() { if(confirm('Yakin ingin keluar?')){ localStorage.clear(); window.location.href='/'; } }
+
+const PAGE_TITLES = {
+  dashboard:'Dashboard Admin', users:'Manajemen User', ekskul:'Ekstrakurikuler',
+  pendaftaran:'Pendaftaran Ekskul', pengumuman:'Pengumuman', profil:'Profil Saya'
+};
+
+function showPage(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page===page));
+  document.getElementById('topbarTitle').textContent = PAGE_TITLES[page]||page;
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+  document.getElementById('pageContent').innerHTML = `<div class="loading-overlay"><div class="spinner-large"></div><span>Memuat...</span></div>`;
+  const renders = {
+    dashboard:renderDashboard, users:renderUsers, ekskul:renderEkskul,
+    pendaftaran:renderPendaftaran, pengumuman:renderPengumuman, profil:renderProfil
+  };
+  (renders[page]||(() => {}))();
+}
+
+// ── DASHBOARD ──
+async function renderDashboard() {
+  const [users, ekskul, pengumuman] = await Promise.all([fetchUsers(), fetchEkskul(), fetchPengumuman()]);
+  const totalSiswa = users.filter(u=>u.role==='siswa').length;
+  const totalGuru  = users.filter(u=>u.role==='guru').length;
+  const totalOrtu  = users.filter(u=>u.role==='orang_tua').length;
+
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>⚙️ Dashboard Administrator</h1>
+      <p>${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon blue">🎓</div>
+        <div class="stat-info"><div class="stat-value">${totalSiswa}</div><div class="stat-label">Total Siswa</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">👨‍🏫</div>
+        <div class="stat-info"><div class="stat-value">${totalGuru}</div><div class="stat-label">Total Guru</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow">👨‍👩‍👦</div>
+        <div class="stat-info"><div class="stat-value">${totalOrtu}</div><div class="stat-label">Orang Tua</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">🏆</div>
+        <div class="stat-info"><div class="stat-value">${ekskul.length}</div><div class="stat-label">Ekstrakurikuler</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <!-- Aksi Cepat -->
+      <div class="card"><div class="card-body">
+        <div class="section-header"><span class="section-title">⚡ Aksi Cepat</span></div>
+        <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.5rem;">
+          <button class="btn btn-primary" onclick="openModalUser()" style="text-align:left;">👥 Tambah User Baru</button>
+          <button class="btn btn-primary" onclick="openModalEkskul()" style="text-align:left;background:var(--secondary);">🏆 Tambah Ekskul</button>
+          <button class="btn btn-primary" onclick="openModal('modalPengumuman')" style="text-align:left;background:var(--warning);">📢 Buat Pengumuman</button>
+          <button class="btn btn-primary" onclick="showPage('pendaftaran')" style="text-align:left;background:#7c3aed;">📋 Kelola Pendaftaran</button>
+        </div>
+      </div></div>
+
+      <!-- Ekskul Kuota -->
+      <div class="card"><div class="card-body">
+        <div class="section-header">
+          <span class="section-title">🏆 Status Kuota Ekskul</span>
+          <button class="btn-link" onclick="showPage('ekskul')">Kelola →</button>
+        </div>
+        <div style="margin-top:.5rem;display:flex;flex-direction:column;gap:.6rem;">
+          ${ekskul.slice(0,5).map(e=>{
+            const pct=Math.round((e.kuota_terisi/e.kuota_max)*100);
+            const cl=pct>=100?'danger':pct>=80?'warning':'';
+            return `<div>
+              <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.2rem;">
+                <span>${e.nama_ekskul}</span>
+                <span style="color:var(--text-mid)">${e.kuota_terisi}/${e.kuota_max}</span>
+              </div>
+              <div class="kuota-bar"><div class="kuota-fill ${cl}" style="width:${Math.min(pct,100)}%"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div></div>
+    </div>
+
+    <!-- Pengumuman terbaru -->
+    <div class="card" style="margin-top:1rem;"><div class="card-body">
+      <div class="section-header">
+        <span class="section-title">📢 Pengumuman Terbaru</span>
+        <button class="btn-link" onclick="showPage('pengumuman')">Lihat Semua →</button>
+      </div>
+      <div class="announcement-list" style="margin-top:.5rem;">
+        ${pengumuman.slice(0,3).map(p=>`
+          <div class="announcement-item ${p.is_pinned?'pinned':''}" style="cursor:default;">
+            <div class="ann-icon">${p.is_pinned?'📌':'📢'}</div>
+            <div class="ann-content">
+              <div class="ann-title">${p.judul}</div>
+              <div class="ann-meta">${new Date(p.tanggal_tayang).toLocaleDateString('id-ID')} · ${p.nama_penulis}</div>
+            </div>
+          </div>`).join('')||'<p style="color:var(--text-light);font-size:.85rem;">Tidak ada pengumuman</p>'}
+      </div>
+    </div></div>`;
+}
+
+// ── MANAJEMEN USER ──
+async function renderUsers() {
+  const users = await fetchUsers();
+  allUsers = users;
+  const roleColors = { admin:'badge-danger', guru:'badge-info', siswa:'badge-success', orang_tua:'badge-warning' };
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>👥 Manajemen User</h1>
+      <p>Total: ${users.length} akun terdaftar</p>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem;">
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        ${['','admin','guru','siswa','orang_tua'].map(r=>`
+          <button class="btn btn-secondary" style="font-size:.8rem;" onclick="filterUsers('${r}')">
+            ${r||'Semua'}
+          </button>`).join('')}
+      </div>
+      <button class="btn btn-primary" onclick="openModalUser()">+ Tambah User</button>
+    </div>
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table" id="usersTable">
+          <thead><tr><th>No</th><th>Nama Lengkap</th><th>Username</th><th>Role</th><th>Email</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody id="usersTbody">
+            ${renderUserRows(users, roleColors)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderUserRows(users, roleColors) {
+  const rc = roleColors || { admin:'badge-danger', guru:'badge-info', siswa:'badge-success', orang_tua:'badge-warning' };
+  return users.map((u,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${u.nama_lengkap}</strong></td>
+      <td>@${u.username}</td>
+      <td><span class="badge ${rc[u.role]||'badge-gray'}">${u.role}</span></td>
+      <td style="font-size:.82rem;">${u.email||'-'}</td>
+      <td><span class="badge ${u.is_active?'badge-success':'badge-danger'}">${u.is_active?'Aktif':'Nonaktif'}</span></td>
+      <td>
+        ${u.id!==currentUser?.id?`
+        <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;"
+                onclick="toggleUser(${u.id},${u.is_active})">
+          ${u.is_active?'Nonaktifkan':'Aktifkan'}
+        </button>`:'<span style="color:var(--text-light);font-size:.8rem;">Anda</span>'}
+      </td>
+    </tr>`).join('');
+}
+
+function filterUsers(role) {
+  const filtered = role ? allUsers.filter(u=>u.role===role) : allUsers;
+  document.getElementById('usersTbody').innerHTML = renderUserRows(filtered);
+}
+
+function openModalUser() {
+  document.getElementById('formUser').reset();
+  openModal('modalUser');
+}
+
+async function submitUser() {
+  const body = {
+    nama_lengkap: document.getElementById('u_nama').value,
+    username: document.getElementById('u_username').value,
+    role: document.getElementById('u_role').value,
+    password: document.getElementById('u_password').value,
+    email: document.getElementById('u_email').value || null,
+    no_hp: document.getElementById('u_hp').value || null,
+  };
+  if (!body.nama_lengkap||!body.username||!body.password) { showToast('Nama, username, password wajib diisi','error'); return; }
+  const res = await fetch(`${API_BASE}/users`, { method:'POST', headers:authHeaders(), body:JSON.stringify(body) });
+  const json = await res.json();
+  closeModal('modalUser');
+  if (res.ok&&json.success) { showToast(`User "${body.username}" berhasil dibuat!`,'success'); showPage('users'); }
+  else showToast(json.message||'Gagal membuat user','error');
+}
+
+async function toggleUser(id, isActive) {
+  const action = isActive ? 'menonaktifkan' : 'mengaktifkan';
+  if (!confirm(`Yakin ingin ${action} akun ini?`)) return;
+  const res = await fetch(`${API_BASE}/users/${id}`, {
+    method:'PUT', headers:authHeaders(),
+    body:JSON.stringify({ is_active: isActive?0:1, nama_lengkap:'update' })
+  });
+  const json = await res.json();
+  if (res.ok) { showToast('Status akun berhasil diubah','success'); showPage('users'); }
+  else showToast(json.message||'Gagal','error');
+}
+
+// ── EKSTRAKURIKULER ──
+async function renderEkskul() {
+  const list = await fetchEkskul();
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>🏆 Manajemen Ekstrakurikuler</h1>
+      <p>${list.length} ekskul terdaftar</p>
+    </div>
+    <div style="text-align:right;margin-bottom:1rem;">
+      <button class="btn btn-primary" onclick="openModalEkskul()">+ Tambah Ekskul</button>
+    </div>
+    <div class="ekskul-grid">
+      ${list.map(e=>{
+        const pct=Math.round((e.kuota_terisi/e.kuota_max)*100);
+        const cl=pct>=100?'danger':pct>=80?'warning':'';
+        return `<div class="ekskul-card">
+          <div class="ekskul-header">🎯</div>
+          <div class="ekskul-body">
+            <div class="ekskul-name">${e.nama_ekskul}</div>
+            <div class="ekskul-info">⏰ ${e.jadwal}</div>
+            <div class="ekskul-info">📍 ${e.tempat||'-'}</div>
+            <div class="kuota-bar"><div class="kuota-fill ${cl}" style="width:${Math.min(pct,100)}%"></div></div>
+            <div class="kuota-text">Kuota: ${e.kuota_terisi}/${e.kuota_max}
+              ${pct>=100?'<span class="badge badge-danger">Penuh</span>':''}
+            </div>
+            <div style="display:flex;gap:.4rem;margin-top:.5rem;">
+              <button class="btn btn-secondary" style="flex:1;font-size:.78rem;"
+                      onclick="editEkskul(${JSON.stringify(e).replace(/"/g,'&quot;')})">✏️ Edit</button>
+              <button class="btn btn-secondary" style="flex:1;font-size:.78rem;color:var(--danger);"
+                      onclick="hapusEkskul(${e.id},'${e.nama_ekskul.replace(/'/g,'\\\'') }')">🗑️ Hapus</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function openModalEkskul() {
+  document.getElementById('modalEkskulTitle').textContent = 'Tambah Ekstrakurikuler';
+  document.getElementById('e_id').value = '';
+  document.getElementById('e_nama').value = '';
+  document.getElementById('e_deskripsi').value = '';
+  document.getElementById('e_jadwal').value = '';
+  document.getElementById('e_tempat').value = '';
+  document.getElementById('e_kuota').value = '30';
+  document.getElementById('e_biaya').value = '0';
+  openModal('modalEkskul');
+}
+
+function editEkskul(e) {
+  document.getElementById('modalEkskulTitle').textContent = 'Edit Ekstrakurikuler';
+  document.getElementById('e_id').value = e.id;
+  document.getElementById('e_nama').value = e.nama_ekskul;
+  document.getElementById('e_deskripsi').value = e.deskripsi||'';
+  document.getElementById('e_jadwal').value = e.jadwal;
+  document.getElementById('e_tempat').value = e.tempat||'';
+  document.getElementById('e_kuota').value = e.kuota_max;
+  document.getElementById('e_biaya').value = e.biaya||0;
+  openModal('modalEkskul');
+}
+
+async function submitEkskul() {
+  const id = document.getElementById('e_id').value;
+  const body = {
+    nama_ekskul: document.getElementById('e_nama').value,
+    deskripsi: document.getElementById('e_deskripsi').value||null,
+    jadwal: document.getElementById('e_jadwal').value,
+    tempat: document.getElementById('e_tempat').value||null,
+    kuota_max: parseInt(document.getElementById('e_kuota').value),
+    biaya: parseFloat(document.getElementById('e_biaya').value)||0,
+    is_active: 1,
+  };
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `${API_BASE}/ekskul/${id}` : `${API_BASE}/ekskul`;
+  const res = await fetch(url, { method, headers:authHeaders(), body:JSON.stringify(body) });
+  const json = await res.json();
+  closeModal('modalEkskul');
+  if (res.ok&&json.success) { showToast(`Ekskul berhasil ${id?'diperbarui':'ditambahkan'}!`,'success'); showPage('ekskul'); }
+  else showToast(json.message||'Gagal','error');
+}
+
+async function hapusEkskul(id, nama) {
+  if (!confirm(`Nonaktifkan ekskul "${nama}"?`)) return;
+  const res = await fetch(`${API_BASE}/ekskul/${id}`, { method:'DELETE', headers:authHeaders() });
+  const json = await res.json();
+  if (res.ok) { showToast('Ekskul dinonaktifkan','success'); showPage('ekskul'); }
+  else showToast(json.message||'Gagal','error');
+}
+
+// ── PENDAFTARAN EKSKUL ──
+async function renderPendaftaran() {
+  const ekskul = await fetchEkskul();
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header">
+      <h1>📋 Kelola Pendaftaran Ekskul</h1>
+      <p>Terima atau tolak pendaftaran siswa</p>
+    </div>
+    <div class="card"><div class="card-body">
+      <div style="display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Pilih Ekskul</label>
+          <select id="filterEkskulId" class="form-control" style="min-width:200px;">
+            ${ekskul.map(e=>`<option value="${e.id}">${e.nama_ekskul}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Filter Status</label>
+          <select id="filterStatus" class="form-control">
+            <option value="">Semua</option>
+            <option value="pending">Pending</option>
+            <option value="diterima">Diterima</option>
+            <option value="ditolak">Ditolak</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="loadPeserta()">Tampilkan</button>
+      </div>
+      <div id="pesertaResult"></div>
+    </div></div>`;
+
+  if (ekskul.length > 0) loadPeserta();
+}
+
+async function loadPeserta() {
+  const ekskulId = document.getElementById('filterEkskulId').value;
+  const status = document.getElementById('filterStatus').value;
+  const url = `${API_BASE}/ekskul/${ekskulId}/peserta${status?`?status=${status}`:''}`;
+  const res = await fetch(url, { headers:authHeaders() });
+  const json = await res.json();
+  const container = document.getElementById('pesertaResult');
+  if (!res.ok||!json.data?.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada data pendaftaran</div></div>`;
+    return;
+  }
+  const STATUS_BADGE = { pending:'badge-warning', diterima:'badge-success', ditolak:'badge-danger' };
+  container.innerHTML = `<div class="table-responsive"><table class="data-table">
+    <thead><tr><th>No</th><th>Nama Siswa</th><th>NIS</th><th>Kelas</th><th>Tgl Daftar</th><th>Status</th><th>Aksi</th></tr></thead>
+    <tbody>
+      ${json.data.map((p,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td><strong>${p.nama_lengkap}</strong></td>
+          <td>${p.nis}</td>
+          <td>${p.nama_kelas}</td>
+          <td style="font-size:.82rem;">${new Date(p.tanggal_daftar).toLocaleDateString('id-ID')}</td>
+          <td><span class="badge ${STATUS_BADGE[p.status]}">${p.status}</span></td>
+          <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
+            ${p.status==='pending'?`
+              <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;color:var(--secondary);"
+                      onclick="updateStatus(${p.pendaftaran_id},'diterima')">✅ Terima</button>
+              <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;color:var(--danger);"
+                      onclick="updateStatus(${p.pendaftaran_id},'ditolak')">❌ Tolak</button>`
+            : p.status==='diterima'?`
+              <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;color:var(--danger);"
+                      onclick="updateStatus(${p.pendaftaran_id},'ditolak')">❌ Tolak</button>`
+            : `<button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;color:var(--secondary);"
+                      onclick="updateStatus(${p.pendaftaran_id},'diterima')">✅ Terima</button>`}
+          </td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+async function updateStatus(pendaftaranId, status) {
+  const label = status==='diterima' ? 'menerima' : 'menolak';
+  if (!confirm(`Yakin ${label} pendaftaran ini?`)) return;
+  const res = await fetch(`${API_BASE}/ekskul/pendaftaran/${pendaftaranId}/status`, {
+    method:'PATCH', headers:authHeaders(), body:JSON.stringify({status})
+  });
+  const json = await res.json();
+  if (res.ok) { showToast(`Pendaftaran berhasil ${status}`,'success'); loadPeserta(); }
+  else showToast(json.message||'Gagal','error');
+}
+
+// ── PENGUMUMAN ──
+async function renderPengumuman() {
+  const list = await fetchPengumuman();
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header"><h1>📢 Pengumuman Sekolah</h1></div>
+    <div style="text-align:right;margin-bottom:1rem;">
+      <button class="btn btn-primary" onclick="openModal('modalPengumuman')">+ Buat Pengumuman</button>
+    </div>
+    <div class="announcement-list">
+      ${list.length===0
+        ? `<div class="empty-state card"><div class="card-body"><div class="empty-icon">📭</div><div class="empty-title">Tidak ada pengumuman</div></div></div>`
+        : list.map(p=>`
+          <div class="announcement-item ${p.is_pinned?'pinned':''}" style="cursor:default;">
+            <div class="ann-icon">${p.is_pinned?'📌':'📢'}</div>
+            <div class="ann-content">
+              <div class="ann-title">${p.judul}</div>
+              <div class="ann-snippet">${p.isi}</div>
+              <div class="ann-meta">${new Date(p.tanggal_tayang).toLocaleDateString('id-ID')} · ${p.nama_penulis}
+                ${p.target_role?`<span class="badge badge-info" style="margin-left:.5rem;">${p.target_role}</span>`:''}
+              </div>
+            </div>
+            <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem;flex-shrink:0;"
+                    onclick="hapusPengumuman(${p.id})">🗑️</button>
+          </div>`).join('')}
+    </div>`;
+}
+
+async function submitPengumuman() {
+  const body = {
+    judul: document.getElementById('p_judul').value,
+    isi: document.getElementById('p_isi').value,
+    tanggal_tayang: document.getElementById('p_tayang').value||null,
+    tanggal_expired: document.getElementById('p_expired').value||null,
+    target_role: document.getElementById('p_target').value||null,
+    is_pinned: document.getElementById('p_pinned').checked,
+  };
+  if (!body.judul||!body.isi) { showToast('Judul dan isi wajib diisi','error'); return; }
+  const res = await fetch(`${API_BASE}/pengumuman`, { method:'POST', headers:authHeaders(), body:JSON.stringify(body) });
+  const json = await res.json();
+  closeModal('modalPengumuman');
+  if (res.ok&&json.success) { showToast('Pengumuman berhasil dipublikasikan!','success'); showPage('pengumuman'); }
+  else showToast(json.message||'Gagal','error');
+}
+
+async function hapusPengumuman(id) {
+  if (!confirm('Hapus pengumuman ini?')) return;
+  const res = await fetch(`${API_BASE}/pengumuman/${id}`, { method:'DELETE', headers:authHeaders() });
+  if (res.ok) { showToast('Pengumuman dihapus','success'); showPage('pengumuman'); }
+  else showToast('Gagal menghapus','error');
+}
+
+// ── PROFIL ──
+function renderProfil() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="page-header"><h1>👤 Profil Saya</h1></div>
+    <div class="card" style="max-width:460px;">
+      <div class="card-body" style="text-align:center;">
+        <div style="width:80px;height:80px;border-radius:50%;background:#e02424;display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;font-weight:700;margin:0 auto 1rem;">
+          ${currentUser?.nama_lengkap?.charAt(0).toUpperCase()}
+        </div>
+        <h2 style="font-size:1.2rem;font-weight:700;">${currentUser?.nama_lengkap}</h2>
+        <p style="color:var(--text-mid);font-size:.85rem;margin-bottom:1.5rem;">Administrator</p>
+        <table style="width:100%;text-align:left;border-collapse:collapse;font-size:.875rem;">
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);width:120px;">Username</td><td style="padding:.6rem 0;font-weight:600;">@${currentUser?.username}</td></tr>
+          <tr><td style="padding:.6rem 0;color:var(--text-mid);">Email</td><td>${currentUser?.email||'-'}</td></tr>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── FETCH HELPERS ──
+async function fetchUsers() {
+  try {
+    const res = await fetch(`${API_BASE}/users?limit=200`, { headers:authHeaders() });
+    const json = await res.json();
+    return json.data?.users || [];
+  } catch { return []; }
+}
+async function fetchEkskul() {
+  try {
+    const res = await fetch(`${API_BASE}/ekskul`, { headers:authHeaders() });
+    const json = await res.json();
+    return json.data || [];
+  } catch { return []; }
+}
+async function fetchPengumuman() {
+  try {
+    const res = await fetch(`${API_BASE}/pengumuman?limit=50`, { headers:authHeaders() });
+    const json = await res.json();
+    return json.data?.pengumuman || [];
+  } catch { return []; }
+}
+</script>
+</body>
+</html>
